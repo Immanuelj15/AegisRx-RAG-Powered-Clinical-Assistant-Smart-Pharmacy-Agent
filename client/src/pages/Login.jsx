@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
+import { FiMail, FiLock, FiAlertCircle, FiArrowRight } from 'react-icons/fi';
 import { Loader } from '../components/Loader';
+import { motion } from 'framer-motion';
 
 export const Login = () => {
   const { login, error: authError, clearError } = useAuth();
@@ -16,17 +17,10 @@ export const Login = () => {
     e.preventDefault();
     setLocalError('');
     clearError();
-
-    if (!email || !password) {
-      setLocalError('Please fill in all fields');
-      return;
-    }
-
+    if (!email || !password) { setLocalError('Please fill in all fields'); return; }
     try {
       setLoading(true);
       const user = await login(email, password);
-      
-      // Redirect based on role
       if (user.role === 'Admin') navigate('/dashboard/admin');
       else if (user.role === 'Pharmacist') navigate('/dashboard/pharmacist');
       else navigate('/dashboard/patient');
@@ -37,27 +31,38 @@ export const Login = () => {
     }
   };
 
-  return (
-    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md py-8 px-4 border border-slate-200/40 dark:border-slate-800/40 shadow-xl rounded-card sm:px-10">
-      <h2 className="text-center text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6">
-        Sign in to MedAssist
-      </h2>
+  const quickFill = (role) => {
+    if (role === 'Patient')     { setEmail('patient@medassist.com');     setPassword('patient123'); }
+    if (role === 'Pharmacist')  { setEmail('pharmacist@medassist.com');  setPassword('pharmacist123'); }
+    if (role === 'Admin')       { setEmail('admin@medassist.com');        setPassword('admin123'); }
+  };
 
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      {/* Heading */}
+      <div className="mb-8">
+        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Welcome back</h2>
+        <p className="text-base text-slate-500 dark:text-slate-400 font-medium mt-2">
+          Sign in to your AegisRx clinical portal
+        </p>
+      </div>
+
+      {/* Error */}
       {(localError || authError) && (
-        <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 text-red-600 dark:text-red-400 rounded-xl text-sm flex items-center space-x-2">
+        <div className="mb-5 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200/60 dark:border-red-900/30 text-red-600 dark:text-red-400 rounded-2xl text-sm flex items-center gap-2.5 font-semibold">
           <FiAlertCircle size={16} className="flex-shrink-0" />
-          <span>{localError || authError}</span>
+          {localError || authError}
         </div>
       )}
 
       <form className="space-y-5" onSubmit={handleSubmit}>
-        <div>
-          <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-1">
+        <div className="space-y-1.5">
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
             Email Address
           </label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 dark:text-slate-500">
-              <FiMail size={16} />
+            <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400">
+              <FiMail size={17} />
             </span>
             <input
               type="email"
@@ -65,26 +70,21 @@ export const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@hospital.com"
-              className="pl-10 block w-full px-3 py-2.5 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-slate-100"
+              className="input-premium pl-11"
             />
           </div>
         </div>
 
-        <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400">
-              Password
-            </label>
-            <Link
-              to="/forgot-password"
-              className="text-xs font-semibold text-primary-500 hover:text-primary-600 dark:hover:text-secondary-400"
-            >
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Password</label>
+            <Link to="/forgot-password" className="text-sm font-semibold text-primary-500 hover:text-primary-600 transition-colors">
               Forgot password?
             </Link>
           </div>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 dark:text-slate-500">
-              <FiLock size={16} />
+            <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400">
+              <FiLock size={17} />
             </span>
             <input
               type="password"
@@ -92,7 +92,7 @@ export const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="pl-10 block w-full px-3 py-2.5 bg-slate-50/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all dark:text-slate-100"
+              className="input-premium pl-11"
             />
           </div>
         </div>
@@ -100,33 +100,38 @@ export const Login = () => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-50 shadow-primary-500/10"
+          className="btn-primary w-full py-3.5 text-base mt-2"
         >
-          {loading ? <Loader size="small" color="white" /> : 'Sign In'}
+          {loading ? <Loader size="small" color="white" /> : (
+            <><span>Sign In</span><FiArrowRight size={18} /></>
+          )}
         </button>
       </form>
 
-      <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-6 text-center">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          New to the hospital?{' '}
-          <Link
-            to="/register"
-            className="font-bold text-primary-500 hover:text-primary-600 dark:hover:text-secondary-400"
-          >
-            Create an Account
+      <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+        <p className="text-center text-base text-slate-500 dark:text-slate-400 font-medium">
+          New to AegisRx?{' '}
+          <Link to="/register" className="font-bold text-primary-500 hover:text-primary-600 transition-colors">
+            Create Account
           </Link>
         </p>
-        
-        {/* Fast Login hints for development */}
-        <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-950/50 rounded-xl text-[11px] text-left text-slate-500 dark:text-slate-400 space-y-1">
-          <p className="font-bold text-slate-600 dark:text-slate-350">Quick-Access Demo logins:</p>
-          <div className="grid grid-cols-3 gap-1 text-center font-semibold text-primary-500 dark:text-secondary-400">
-            <button onClick={() => { setEmail('patient@medassist.com'); setPassword('patient123'); }} className="hover:underline">Patient</button>
-            <button onClick={() => { setEmail('pharmacist@medassist.com'); setPassword('pharmacist123'); }} className="hover:underline">Pharmacist</button>
-            <button onClick={() => { setEmail('admin@medassist.com'); setPassword('admin123'); }} className="hover:underline">Admin</button>
+
+        {/* Demo quick-fill */}
+        <div className="mt-5 p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">⚡ Demo Quick Access</p>
+          <div className="grid grid-cols-3 gap-2">
+            {['Patient', 'Pharmacist', 'Admin'].map(role => (
+              <button
+                key={role}
+                onClick={() => quickFill(role)}
+                className="py-2 px-3 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/20 hover:border-primary-200 transition-all"
+              >
+                {role}
+              </button>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
