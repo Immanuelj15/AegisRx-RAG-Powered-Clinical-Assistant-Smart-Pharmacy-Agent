@@ -217,6 +217,18 @@ export const Landing = () => {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden max-w-7xl mx-auto px-6 pt-20 pb-28 md:pt-28 md:pb-36">
+        {/* 3D Medical AI Background Overlay */}
+        <div 
+          className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] opacity-15 dark:opacity-30 pointer-events-none mix-blend-screen"
+          style={{ 
+            backgroundImage: "url('/hero-ai.png')", 
+            backgroundSize: 'cover', 
+            backgroundPosition: 'center',
+            maskImage: 'radial-gradient(circle at center, black 0%, transparent 60%)',
+            WebkitMaskImage: 'radial-gradient(circle at center, black 0%, transparent 60%)'
+          }} 
+        />
+        
         <div className="hero-orb-1" />
         <div className="hero-orb-2" />
 
@@ -440,9 +452,17 @@ export const Landing = () => {
       {/* ── CTA SECTION ──────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-24">
         <motion.div custom={0} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
-          className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-primary-600 via-primary-500 to-secondary-500 p-12 md:p-16 text-center shadow-2xl shadow-primary-500/30">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNnKSIvPjwvc3ZnPg==')] opacity-50" />
-          <div className="relative space-y-6">
+          className="relative overflow-hidden rounded-[28px] p-12 md:p-16 text-center shadow-2xl shadow-primary-500/30 group"
+          style={{ 
+            backgroundImage: "url('/hero-ai.png')", 
+            backgroundSize: 'cover', 
+            backgroundPosition: 'center'
+          }}
+        >
+          {/* Dark Glass Overlay to ensure text readability */}
+          <div className="absolute inset-0 bg-slate-900/70 group-hover:bg-slate-900/60 transition-colors duration-500 backdrop-blur-[2px]" />
+          
+          <div className="relative z-10 space-y-6">
             <h2 className="text-white font-black text-4xl md:text-5xl">
               Ready to Transform <br />Clinical Care?
             </h2>
