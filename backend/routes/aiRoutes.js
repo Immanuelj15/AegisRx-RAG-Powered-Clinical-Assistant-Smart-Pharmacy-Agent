@@ -1,0 +1,62 @@
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { 
+  chatAgent, 
+  understandPrescription, 
+  answerFaq, 
+  suggestAlternative,
+  getChatSessions
+} = require('../controllers/aiController');
+const { protect } = require('../middleware/authMiddleware');
+
+// Configure Multer for Prescription Image Uploads
+const uploadDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `prescription-${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+
+const uploadImage = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|webp|pdf/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+    if (mimetype || extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Only images and PDFs are allowed!'));
+  }
+});
+
+router.post('/chat', protect, chatAgent);
+router.post('/prescription', protect, uploadImage.single('file'), understandPrescription);
+router.post('/faq', answerFaq);
+router.post('/alternative', protect, suggestAlternative);
+router.get('/sessions', protect, getChatSessions);
+
+// PDF Export Routes
+const { generateChatPDF, generatePrescriptionPDF } = require('../utils/pdfGenerator');
+
+router.post('/export-pdf', protect, (req, res) => {
+  const { title, messages } = req.body;
+  generateChatPDF(res, title, messages);
+});
+
+router.post('/export-prescription-pdf', protect, (req, res) => {
+  const { analysis } = req.body;
+  generatePrescriptionPDF(res, analysis);
+});
+
+module.exports = router;

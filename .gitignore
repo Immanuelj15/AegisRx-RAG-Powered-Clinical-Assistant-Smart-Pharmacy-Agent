@@ -1,0 +1,19 @@
+# Dependency folders
+node_modules/
+client/node_modules/
+
+# Environment variables containing keys
+.env
+
+# Local database storage
+backend/chromadb/
+
+# Upload folders & builds
+backend/uploads/*
+!backend/uploads/.gitkeep
+client/dist/
+
+# System logs
+*.log
+.DS_Store
+Thumbs.db
