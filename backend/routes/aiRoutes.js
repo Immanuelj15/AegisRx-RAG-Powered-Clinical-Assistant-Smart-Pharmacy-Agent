@@ -12,7 +12,8 @@ const {
   exportSignedPrescription,
   exportProcurementPO,
   matchClinicalTrials,
-  auditFdaRecall
+  auditFdaRecall,
+  researchMedicine
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -69,5 +70,6 @@ router.post('/export-po-pdf', protect, exportProcurementPO);
 // Clinical Trial & openFDA Safety Routes
 router.get('/trials/:condition', protect, matchClinicalTrials);
 router.get('/fda-audit/:name', protect, auditFdaRecall);
+router.get('/research/:name', protect, researchMedicine);
 
 module.exports = router;

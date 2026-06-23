@@ -10,7 +10,11 @@ import {
   FiExternalLink,
   FiPlusCircle,
   FiMinusCircle,
-  FiShield
+  FiShield,
+  FiThumbsUp,
+  FiThumbsDown,
+  FiActivity,
+  FiBookOpen
 } from 'react-icons/fi';
 import { Loader } from '../components/Loader';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,6 +36,11 @@ export const MedicineSearch = () => {
   // FDA Recall Safety Audit state
   const [fdaAudit, setFdaAudit] = useState(null);
   const [fdaLoading, setFdaLoading] = useState(false);
+
+  // Medicine Research state
+  const [researchData, setResearchData] = useState(null);
+  const [researchLoading, setResearchLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'research'
 
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -89,6 +98,8 @@ export const MedicineSearch = () => {
   const openMedDetails = async (med) => {
     setSelectedMed(med);
     setFdaAudit(null);
+    setResearchData(null);
+    setActiveTab('details');
     if (med.Stock === 0 && med.Alternative) {
       const foundAlt = allMedicines.find(m => 
         m.Medicine_Name.toLowerCase().includes(med.Alternative.toLowerCase()) ||
@@ -109,6 +120,22 @@ export const MedicineSearch = () => {
       console.error('FDA safety recall check failed:', err);
     } finally {
       setFdaLoading(false);
+    }
+  };
+
+  const loadResearch = async (medName) => {
+    if (researchData) { setActiveTab('research'); return; }
+    try {
+      setResearchLoading(true);
+      setActiveTab('research');
+      const res = await axios.get(`${API_URL}/ai/research/${encodeURIComponent(medName)}`, config);
+      if (res.data && res.data.success) {
+        setResearchData(res.data.profile);
+      }
+    } catch (err) {
+      console.error('Medicine research failed:', err);
+    } finally {
+      setResearchLoading(false);
     }
   };
 
@@ -375,7 +402,7 @@ export const MedicineSearch = () => {
       {/* Selected Medicine Detail Modal */}
       {selectedMed && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-100 dark:border-slate-800 text-xs">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-100 dark:border-slate-800 text-xs">
             {/* Header info */}
             <div className="flex justify-between items-start mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
@@ -390,8 +417,34 @@ export const MedicineSearch = () => {
               </button>
             </div>
 
+            {/* Tab Bar */}
+            <div className="flex space-x-1 mb-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
+                  activeTab === 'details'
+                    ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <FiInfo size={12} /><span>Details & Safety</span>
+              </button>
+              <button
+                onClick={() => loadResearch(selectedMed.Medicine_Name)}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
+                  activeTab === 'research'
+                    ? 'bg-white dark:bg-slate-900 text-primary-600 dark:text-primary-400 shadow'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <FiBookOpen size={12} /><span>AI Research</span>
+                <span className="text-[8px] bg-primary-500 text-white px-1 py-0.5 rounded font-black uppercase">NEW</span>
+              </button>
+            </div>
+
             {/* Information Grid */}
-            <div className="space-y-4 leading-relaxed">
+            {/* DETAILS TAB */}
+            {activeTab === 'details' && <div className="space-y-4 leading-relaxed">
               {checkAllergyAlert(selectedMed) && (
                 <div className="p-3.5 bg-red-650 text-white rounded-xl font-bold flex items-start space-x-2 shadow-md">
                   <FiAlertCircle size={18} className="flex-shrink-0 mt-0.5" />
@@ -544,7 +597,137 @@ export const MedicineSearch = () => {
                   Close
                 </button>
               </div>
-            </div>
+            </div>}
+
+            {/* RESEARCH TAB */}
+            {activeTab === 'research' && (
+              <div className="space-y-5">
+                {researchLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 space-y-3">
+                    <div className="w-10 h-10 border-4 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+                    <p className="text-xs font-bold text-slate-500 animate-pulse">AegisRx AI is compiling clinical evidence...</p>
+                  </div>
+                ) : researchData ? (
+                  <>
+                    {/* Overview */}
+                    {researchData.overview && (
+                      <div className="p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-950/20 dark:to-blue-950/20 border border-primary-100 dark:border-primary-900/30 rounded-xl">
+                        <p className="text-[10px] uppercase font-extrabold text-primary-600 dark:text-primary-400 mb-1 tracking-wider">Drug Overview</p>
+                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{researchData.overview}</p>
+                      </div>
+                    )}
+
+                    {/* Mechanism of Action */}
+                    {researchData.mechanismOfAction && (
+                      <div className="p-3 bg-indigo-50 dark:bg-indigo-950/15 border border-indigo-100 dark:border-indigo-900/20 rounded-xl">
+                        <p className="text-[10px] uppercase font-extrabold text-indigo-600 dark:text-indigo-400 mb-1 tracking-wider flex items-center space-x-1"><FiActivity size={10}/><span>Mechanism of Action</span></p>
+                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{researchData.mechanismOfAction}</p>
+                      </div>
+                    )}
+
+                    {/* Pros & Cons Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* PROS */}
+                      <div className="space-y-2">
+                        <h5 className="font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center space-x-1 text-[11px] uppercase tracking-wider">
+                          <FiThumbsUp size={12}/><span>Benefits</span>
+                        </h5>
+                        {(researchData.pros || []).map((item, i) => (
+                          <div key={i} className="p-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/25 rounded-xl">
+                            <p className="font-extrabold text-emerald-800 dark:text-emerald-300 text-[10px]">{item.title}</p>
+                            <p className="text-[9px] text-emerald-700 dark:text-emerald-400 mt-0.5 leading-relaxed">{item.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {/* CONS */}
+                      <div className="space-y-2">
+                        <h5 className="font-extrabold text-red-600 dark:text-red-400 flex items-center space-x-1 text-[11px] uppercase tracking-wider">
+                          <FiThumbsDown size={12}/><span>Risks & Cons</span>
+                        </h5>
+                        {(researchData.cons || []).map((item, i) => (
+                          <div key={i} className="p-2.5 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/25 rounded-xl">
+                            <p className="font-extrabold text-red-700 dark:text-red-300 text-[10px]">{item.title}</p>
+                            <p className="text-[9px] text-red-600 dark:text-red-400 mt-0.5 leading-relaxed">{item.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Dosage Table */}
+                    {researchData.dosage && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider">Dosage Guide</p>
+                        <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                          {[
+                            { label: 'Adult', val: researchData.dosage.adult },
+                            { label: 'Pediatric', val: researchData.dosage.pediatric },
+                            { label: 'Renal Impairment', val: researchData.dosage.renal },
+                            { label: 'Hepatic Impairment', val: researchData.dosage.hepatic },
+                            { label: 'Max Daily Dose', val: researchData.dosage.maxDaily },
+                          ].map((row, i) => (
+                            <div key={i} className={`flex text-[10px] ${ i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-950' : 'bg-white dark:bg-slate-900' }`}>
+                              <span className="w-36 flex-shrink-0 px-3 py-2 font-extrabold text-slate-600 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800">{row.label}</span>
+                              <span className="px-3 py-2 text-slate-700 dark:text-slate-300 flex-1">{row.val || 'N/A'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Substitutes & Interactions */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {researchData.commonSubstitutes && researchData.commonSubstitutes.length > 0 && (
+                        <div>
+                          <p className="text-[10px] uppercase font-extrabold text-slate-500 mb-1.5 tracking-wider">Common Substitutes</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {researchData.commonSubstitutes.map((sub, i) => (
+                              <span key={i} className="px-2 py-0.5 text-[9px] font-bold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/20 rounded-full">{sub}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {researchData.keyInteractions && researchData.keyInteractions.length > 0 && (
+                        <div>
+                          <p className="text-[10px] uppercase font-extrabold text-slate-500 mb-1.5 tracking-wider">Key Interactions</p>
+                          <div className="space-y-1">
+                            {researchData.keyInteractions.map((item, i) => (
+                              <p key={i} className="text-[9px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/15 border border-amber-100 dark:border-amber-900/20 rounded px-2 py-1">{item}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pregnancy Category */}
+                    {researchData.pregnancyCategory && (
+                      <div className="p-2.5 bg-pink-50 dark:bg-pink-950/15 border border-pink-100 dark:border-pink-900/20 rounded-xl">
+                        <span className="text-[9px] font-extrabold text-pink-600 dark:text-pink-400 uppercase tracking-wider">Pregnancy Category: </span>
+                        <span className="text-[9px] text-pink-700 dark:text-pink-300">{researchData.pregnancyCategory}</span>
+                      </div>
+                    )}
+
+                    {/* ⚕️ Physician Disclaimer */}
+                    <div className="p-4 bg-amber-50 dark:bg-amber-950/25 border-2 border-amber-300 dark:border-amber-700/50 rounded-2xl flex items-start space-x-3 shadow-sm">
+                      <span className="text-2xl flex-shrink-0">⚕️</span>
+                      <div>
+                        <p className="font-extrabold text-amber-800 dark:text-amber-300 text-[11px] uppercase tracking-wider mb-1">Medical Disclaimer</p>
+                        <p className="text-amber-700 dark:text-amber-400 leading-relaxed">
+                          This AI-generated profile is for informational purposes only and is NOT a substitute for professional medical advice. 
+                          Always <strong>consult a licensed physician or pharmacist</strong> before starting, stopping, or changing any medication dosage. 
+                          Dosages vary by individual patient factors including weight, age, and comorbidities.
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-10 text-slate-400">
+                    <FiBookOpen size={32} className="mx-auto mb-2 opacity-40" />
+                    <p className="font-bold text-sm">Research data unavailable</p>
+                    <p className="text-[10px] mt-1">AI service may be temporarily offline.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

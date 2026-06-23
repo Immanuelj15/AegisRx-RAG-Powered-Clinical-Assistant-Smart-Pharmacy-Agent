@@ -421,6 +421,81 @@ const auditFdaRecall = async (req, res) => {
   }
 };
 
+// @desc    Research a medicine - Pros/Cons, Dosage, Substitutes, Disclaimer
+// @route   GET /api/ai/research/:name
+// @access  Private
+const researchMedicine = async (req, res) => {
+  try {
+    const { name } = req.params;
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'Medicine name is required' });
+    }
+
+    console.log(`Researching medicine: ${name}`);
+
+    // Try to enrich with local RAG context first
+    let ragContext = '';
+    try {
+      const ragRes = await axios.post(`${RAG_SERVICE_URL}/api/rag/query`, {
+        query: `${name} dosage uses side effects interactions`,
+        top_k: 2
+      });
+      if (ragRes.data && ragRes.data.success && ragRes.data.results.length > 0) {
+        ragContext = ragRes.data.results.map(r => r.document).join('\n---\n');
+      }
+    } catch (ragErr) {
+      console.warn('RAG context not available for research, using Groq general knowledge:', ragErr.message);
+    }
+
+    const systemPrompt = `You are a senior clinical pharmacist and medical researcher. Provide a detailed, evidence-based medicine profile.
+Return ONLY valid JSON — no markdown fences, no extra text — matching this exact schema:
+{
+  "overview": "2-3 sentence summary of the drug class and primary therapeutic role",
+  "pros": [
+    { "title": "string", "detail": "string" }
+  ],
+  "cons": [
+    { "title": "string", "detail": "string" }
+  ],
+  "dosage": {
+    "adult": "standard adult dosing string",
+    "pediatric": "pediatric dosing or 'Consult paediatrician'",
+    "renal": "renal adjustment or 'No adjustment required'",
+    "hepatic": "hepatic adjustment or 'Use with caution'",
+    "maxDaily": "maximum daily dose string"
+  },
+  "commonSubstitutes": ["string", "string", "string"],
+  "keyInteractions": ["string", "string"],
+  "pregnancyCategory": "FDA category letter and brief note",
+  "mechanismOfAction": "1-2 sentences describing the MOA"
+}
+Provide 4-6 items in pros and cons arrays. Be specific and clinically accurate.`;
+
+    const userPrompt = `${ragContext ? `Local hospital database context:\n${ragContext}\n\n` : ''}Research the medicine: "${name}"\nReturn the JSON schema as instructed.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.3);
+
+    // Parse JSON from Groq response (strip any accidental markdown fences)
+    let profile;
+    try {
+      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      profile = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.warn('Failed to parse Groq JSON, returning raw text:', parseErr.message);
+      profile = { raw };
+    }
+
+    res.status(200).json({
+      success: true,
+      medicineName: name,
+      profile
+    });
+  } catch (error) {
+    console.error('Research medicine error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   chatAgent,
   understandPrescription,
@@ -430,5 +505,6 @@ module.exports = {
   exportSignedPrescription,
   exportProcurementPO,
   matchClinicalTrials,
-  auditFdaRecall
+  auditFdaRecall,
+  researchMedicine
 };
