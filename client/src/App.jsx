@@ -29,6 +29,8 @@ import { HealthReport } from './pages/HealthReport';
 import { DosageCalculator } from './pages/DosageCalculator';
 import { InteractionMatrix } from './pages/InteractionMatrix';
 import { DietPlanner } from './pages/DietPlanner';
+import { Pharmacogenomics } from './pages/Pharmacogenomics';
+import { Telemedicine } from './pages/Telemedicine';
 
 function App() {
   return (
@@ -66,6 +68,8 @@ function App() {
               <Route path="/health-report" element={<HealthReport />} />
               <Route path="/dosage-calc" element={<DosageCalculator />} />
               <Route path="/interaction-matrix" element={<InteractionMatrix />} />
+              <Route path="/genomics" element={<Pharmacogenomics />} />
+              <Route path="/telemedicine" element={<Telemedicine />} />
               <Route path="/diet-plan" element={<DietPlanner />} />
             </Route>
 

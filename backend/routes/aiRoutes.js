@@ -18,7 +18,8 @@ const {
   generateHealthReport,
   dosageCalculator,
   checkInteractions,
-  generateDietPlan
+  generateDietPlan,
+  analyzeGenomics
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -87,5 +88,8 @@ router.post('/diet-plan', protect, generateDietPlan);
 
 // @route   POST /api/ai/check-interactions
 router.post('/check-interactions', protect, checkInteractions);
+
+// @route   POST /api/ai/genomic-analysis
+router.post('/genomic-analysis', protect, analyzeGenomics);
 
 module.exports = router;

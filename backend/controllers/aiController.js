@@ -511,7 +511,8 @@ module.exports = {
   generateHealthReport,
   dosageCalculator,
   checkInteractions,
-  generateDietPlan
+  generateDietPlan,
+  analyzeGenomics
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -769,6 +770,56 @@ Output MUST be a valid JSON object matching this exact schema, NO MARKDOWN, JUST
     res.status(200).json({ success: true, dietPlan });
   } catch (error) {
     console.error('Diet Planner Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Pharmacogenomics Analysis Dashboard
+// @route   POST /api/ai/genomic-analysis
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function analyzeGenomics(req, res) {
+  try {
+    const { targetDrug, phenotypes } = req.body;
+    
+    if (!targetDrug || !phenotypes) {
+      return res.status(400).json({ success: false, error: 'Target drug and enzyme phenotypes are required.' });
+    }
+
+    const systemPrompt = `You are a world-class Clinical Geneticist and Pharmacogenomics AI.
+Analyze the expected efficacy and toxicity of the target drug based on the patient's specific Cytochrome P450 (CYP450) enzyme phenotypes.
+
+Target Drug: ${targetDrug}
+Patient Genomic Profile:
+${JSON.stringify(phenotypes, null, 2)}
+
+Provide a strict JSON response containing the genomic clinical report. NO MARKDOWN. JUST JSON.
+Schema:
+{
+  "drug": "Drug name",
+  "primaryMetabolizingEnzyme": "e.g., CYP2D6",
+  "metabolizerStatus": "e.g., Poor, Ultra-Rapid, Normal",
+  "clinicalAction": "USE AS DIRECTED | ADJUST DOSE | AVOID | USE ALTERNATIVE",
+  "efficacyPrediction": "Description of expected therapeutic effect",
+  "toxicityRisk": "Description of expected adverse effects",
+  "recommendation": "Detailed clinical recommendation for the pharmacist/doctor"
+}`;
+
+    const raw = await groqService.getCompletion(systemPrompt, "Perform the genomic analysis.", 0.2);
+    
+    let report = {};
+    try {
+      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      report = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error('Genomic JSON parse failed:', parseErr.message);
+      return res.status(500).json({ success: false, error: 'Failed to parse AI genomic data.' });
+    }
+
+    res.status(200).json({ success: true, report });
+  } catch (error) {
+    console.error('Genomic Analysis Error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 }

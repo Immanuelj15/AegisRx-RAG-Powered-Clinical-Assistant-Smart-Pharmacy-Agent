@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   FiGrid, FiSearch, FiMessageSquare, FiUploadCloud, FiUsers, 
   FiLayers, FiFileText, FiX, FiCalendar, FiActivity, FiHeart, FiSliders,
-  FiLogOut, FiCoffee
+  FiLogOut, FiCoffee, FiVideo, FiHexagon
 } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 
@@ -24,6 +24,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       label: 'Main',
       items: [
         { name: 'Dashboard', path: getDashboardPath(), icon: <FiGrid size={18} />, roles: ['Patient','Pharmacist','Admin'] },
+        { name: 'Telemedicine Call', path: '/telemedicine', icon: <FiVideo size={18} />, roles: ['Patient', 'Pharmacist'], badge: 'Live' },
         { name: 'Medicine Search', path: '/search', icon: <FiSearch size={18} />, roles: ['Pharmacist','Admin'] },
         { name: 'AI Medical Chat', path: '/chat', icon: <FiMessageSquare size={18} />, roles: ['Patient','Pharmacist','Admin'] },
       ]
@@ -42,7 +43,8 @@ export const Sidebar = ({ isOpen, onClose }) => {
       items: [
         { name: 'Interaction Matrix', path: '/interaction-matrix', icon: <FiActivity size={18} />, roles: ['Pharmacist','Admin'], badge: 'AI' },
         { name: 'Prescription Analyzer', path: '/prescription', icon: <FiUploadCloud size={18} />, roles: ['Pharmacist'] },
-        { name: 'Dosage Calculator', path: '/dosage-calc', icon: <FiSliders size={18} />, roles: ['Pharmacist'], badge: 'AI' },
+        { name: 'Pharmacogenomics', path: '/genomics', icon: <FiHexagon size={18} />, roles: ['Pharmacist', 'Admin'], badge: 'DNA' },
+        { name: 'Dosage Calculator', path: '/dosage-calc', icon: <FiSliders size={18} />, roles: ['Pharmacist','Admin'], badge: 'AI' },
         { name: 'Prescription Writer', path: '/prescription-writer', icon: <FiFileText size={18} />, roles: ['Pharmacist','Admin'] },
         { name: 'System Inventory', path: '/inventory', icon: <FiLayers size={18} />, roles: ['Pharmacist','Admin'] },
       ]
