@@ -11,6 +11,58 @@ import {
 } from 'react-icons/fi';
 import { Loader } from '../components/Loader';
 
+
+// Helper for client-side canvas image preprocessing (Grayscale, Contrast enhancement, and Binarization)
+const preprocessImage = (imageSrc) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = imageSrc;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw original image on canvas
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        const contrastFactor = 1.8; // Contrast multiplier
+        const threshold = 120;       // Luminance threshold
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
+          // 1. Grayscale using percieved weights
+          let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          
+          // 2. Contrast adjustment
+          gray = contrastFactor * (gray - 128) + 128;
+          
+          // 3. Thresholding (Binarization)
+          const finalVal = gray < threshold ? 0 : 255;
+          
+          data[i] = finalVal;
+          data[i + 1] = finalVal;
+          data[i + 2] = finalVal;
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = (err) => reject(err);
+  });
+};
+
 export const PrescriptionUpload = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
@@ -55,9 +107,23 @@ export const PrescriptionUpload = () => {
     
     // 1. Run local Tesseract OCR on Image
     try {
+      let targetSource = file;
+      
+      // Apply advanced filters to images to increase OCR transcription rates
+      if (file.type.startsWith('image/') && preview) {
+        console.log("Applying canvas-level image preprocessing filters (Grayscale, Contrast Boost, Binarization)...");
+        try {
+          const processedDataUrl = await preprocessImage(preview);
+          targetSource = processedDataUrl;
+        } catch (prepErr) {
+          console.warn("Failed to preprocess image, falling back to raw file:", prepErr);
+          targetSource = file;
+        }
+      }
+      
       const Tesseract = await import('tesseract.js');
       const ocrResult = await Tesseract.default.recognize(
-        file,
+        targetSource,
         'eng',
         {
           logger: (m) => {

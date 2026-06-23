@@ -1,10 +1,12 @@
 import os
 import csv
 import json
+import math
+from collections import Counter
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import chromadb
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 
 app = Flask(__name__)
 CORS(app)
@@ -13,6 +15,77 @@ CORS(app)
 print("Loading sentence-transformers/all-MiniLM-L6-v2 model...")
 model = SentenceTransformer('all-MiniLM-L6-v2')
 print("Model loaded successfully.")
+
+# Load the CrossEncoder model with offline resilience
+try:
+    print("Loading cross-encoder/ms-marco-MiniLM-L-6-v2 model...")
+    reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+    print("Reranker cross-encoder model loaded successfully.")
+except Exception as e:
+    print(f"Warning: Failed to load Cross-Encoder, proceeding with RRF fallback: {e}")
+    reranker = None
+
+# Custom Zero-Dependency BM25 Lexical Scoring Implementation
+class SimpleBM25:
+    def __init__(self, corpus, k1=1.5, b=0.75):
+        self.k1 = k1
+        self.b = b
+        self.corpus_size = len(corpus)
+        self.tokenized_corpus = [self.tokenize(doc) for doc in corpus]
+        self.doc_lens = [len(doc) for doc in self.tokenized_corpus]
+        self.avg_doc_len = sum(self.doc_lens) / self.corpus_size if self.corpus_size > 0 else 0
+        
+        self.doc_freqs = []
+        nd = {}
+        for doc in self.tokenized_corpus:
+            frequencies = Counter(doc)
+            self.doc_freqs.append(frequencies)
+            for term in frequencies:
+                nd[term] = nd.get(term, 0) + 1
+                
+        self.idf = {}
+        for term, freq in nd.items():
+            # Standard BM25 IDF
+            self.idf[term] = math.log((self.corpus_size - freq + 0.5) / (freq + 0.5) + 1.0)
+            
+    def tokenize(self, text):
+        if not text:
+            return []
+        # simple lowercase tokenization ignoring punctuation
+        return [word.strip(",.?!()[]{}:;\"'").lower() for word in text.split() if word]
+        
+    def get_scores(self, query):
+        query_tokens = self.tokenize(query)
+        scores = []
+        for idx in range(self.corpus_size):
+            score = 0.0
+            doc_len = self.doc_lens[idx]
+            frequencies = self.doc_freqs[idx]
+            for term in query_tokens:
+                if term in frequencies:
+                    freq = frequencies[term]
+                    idf = self.idf.get(term, 0)
+                    num = freq * (self.k1 + 1)
+                    denom = freq + self.k1 * (1 - self.b + self.b * doc_len / self.avg_doc_len)
+                    score += idf * (num / denom)
+            scores.append(score)
+        return scores
+
+# Reciprocal Rank Fusion (RRF) algorithm for merging sparse and dense candidate ranks
+def reciprocal_rank_fusion(dense_results, sparse_results, k=60):
+    rrf_scores = {}
+    
+    for rank, item in enumerate(dense_results):
+        doc_id = item['id']
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + (rank + 1))
+        
+    for rank, item in enumerate(sparse_results):
+        doc_id = item['id']
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + (rank + 1))
+        
+    # Sort by score descending
+    sorted_ids = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
+    return sorted_ids, rrf_scores
 
 # Setup ChromaDB persistent client
 # Use absolute path to ensure accuracy
@@ -167,32 +240,102 @@ def query_rag():
                 "message": "Vector database is empty. Please run ingestion first."
             })
             
-        # Generate query embedding
+        # 1. Sparse Retrieval: Build BM25 index on-the-fly from active Chroma records
+        db_data = collection.get()
+        sparse_results = []
+        if db_data and 'ids' in db_data and len(db_data['ids']) > 0:
+            ids = db_data['ids']
+            documents = db_data['documents']
+            metadatas = db_data['metadatas']
+            
+            bm25 = SimpleBM25(documents)
+            bm25_scores = bm25.get_scores(query_text)
+            
+            for idx, score in enumerate(bm25_scores):
+                if score > 0.05:  # Keep candidates with meaningful keyword matches
+                    sparse_results.append({
+                        "id": ids[idx],
+                        "document": documents[idx],
+                        "metadata": metadatas[idx],
+                        "score": score
+                    })
+            # Sort sparse candidates descending by lexical score
+            sparse_results.sort(key=lambda x: x['score'], reverse=True)
+            
+        # 2. Dense Retrieval: Query ChromaDB for top conceptual matches
+        dense_results = []
         query_embedding = model.encode(query_text).tolist()
-        
-        # Query ChromaDB
+        # Fetch more candidates than requested to form a solid reranking pool
         results = collection.query(
             query_embeddings=[query_embedding],
-            n_results=top_k
+            n_results=min(20, count)
         )
         
-        # Parse and format results
-        formatted_results = []
         if results and 'ids' in results and len(results['ids']) > 0:
-            ids = results['ids'][0]
-            distances = results['distances'][0] if 'distances' in results else [0.0] * len(ids)
-            metadatas = results['metadatas'][0] if 'metadatas' in results else [{}] * len(ids)
-            documents = results['documents'][0] if 'documents' in results else [""] * len(ids)
+            d_ids = results['ids'][0]
+            d_distances = results['distances'][0] if 'distances' in results else [0.0] * len(d_ids)
+            d_metadatas = results['metadatas'][0] if 'metadatas' in results else [{}] * len(d_ids)
+            d_documents = results['documents'][0] if 'documents' in results else [""] * len(d_ids)
             
-            for i in range(len(ids)):
-                formatted_results.append({
-                    "id": ids[i],
-                    "document": documents[i],
-                    "metadata": metadatas[i],
-                    "distance": distances[i],
-                    "similarity": round(1.0 - (distances[i] / 2.0), 4) # Normalize cosine distance to similarity
+            for i in range(len(d_ids)):
+                dense_results.append({
+                    "id": d_ids[i],
+                    "document": d_documents[i],
+                    "metadata": d_metadatas[i],
+                    "distance": d_distances[i],
+                    "similarity": round(1.0 - (d_distances[i] / 2.0), 4)
+                })
+
+        # 3. Merge & Deduplicate Sparse & Dense Candidates
+        candidate_dict = {}
+        for item in dense_results + sparse_results:
+            candidate_dict[item['id']] = item
+            
+        unique_candidates = list(candidate_dict.values())
+        
+        # 4. Reranking Pipeline
+        final_results = []
+        if reranker is not None and len(unique_candidates) > 0:
+            print(f"Reranking {len(unique_candidates)} candidates using Cross-Encoder model...")
+            # Build query-document pairs
+            pairs = [[query_text, item['document']] for item in unique_candidates]
+            
+            # Predict reranking scores
+            rerank_scores = reranker.predict(pairs)
+            if not isinstance(rerank_scores, list) and hasattr(rerank_scores, 'tolist'):
+                rerank_scores = rerank_scores.tolist()
+                
+            for idx, score in enumerate(rerank_scores):
+                item = unique_candidates[idx]
+                # Convert raw logit similarity to clean sigmoid range [0, 1]
+                sigmoid_similarity = round(1.0 / (1.0 + math.exp(-score)), 4)
+                final_results.append({
+                    "id": item['id'],
+                    "document": item['document'],
+                    "metadata": item['metadata'],
+                    "distance": round(score, 4),
+                    "similarity": sigmoid_similarity
+                })
+            # Sort by sigmoid similarity score descending
+            final_results.sort(key=lambda x: x['similarity'], reverse=True)
+        else:
+            # Fallback to Reciprocal Rank Fusion (RRF) if CrossEncoder is offline
+            print("Performing Reciprocal Rank Fusion (RRF) candidate merge...")
+            rrf_ids, rrf_scores = reciprocal_rank_fusion(dense_results, sparse_results)
+            
+            for doc_id in rrf_ids:
+                item = candidate_dict[doc_id]
+                final_results.append({
+                    "id": item['id'],
+                    "document": item['document'],
+                    "metadata": item['metadata'],
+                    "distance": round(rrf_scores[doc_id], 6),
+                    "similarity": round(item.get('similarity', 0.55), 4)
                 })
                 
+        # Sift results to final top_k limit
+        formatted_results = final_results[:top_k]
+        
         return jsonify({
             "success": True,
             "results": formatted_results
