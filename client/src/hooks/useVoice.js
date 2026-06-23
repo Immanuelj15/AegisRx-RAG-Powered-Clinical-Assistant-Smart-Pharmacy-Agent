@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export const useVoice = () => {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [recognition, setRecognition] = useState(null);
+  const recognitionRef = useRef(null);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -15,7 +15,7 @@ export const useVoice = () => {
       recog.lang = 'en-US';
       recog.interimResults = false;
       recog.maxAlternatives = 1;
-      setRecognition(recog);
+      recognitionRef.current = recog;
       setSpeechSupported(true);
     }
   }, []);
@@ -29,7 +29,7 @@ export const useVoice = () => {
 
     // Clean text of markdown characters to speak cleanly
     const cleanText = text
-      .replace(/[#*`_~[\]()\-]/g, ' ')
+      .replace(/[#*`_~[\]()-]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
@@ -50,6 +50,7 @@ export const useVoice = () => {
 
   // Speech-To-Text listener
   const startListening = useCallback((onResult) => {
+    const recognition = recognitionRef.current;
     if (!recognition) return;
 
     recognition.onstart = () => {
@@ -75,13 +76,14 @@ export const useVoice = () => {
     } catch (e) {
       console.warn('Recognition already started:', e);
     }
-  }, [recognition]);
+  }, []);
 
   const stopListening = useCallback(() => {
+    const recognition = recognitionRef.current;
     if (!recognition) return;
     recognition.stop();
     setIsListening(false);
-  }, [recognition]);
+  }, []);
 
   return {
     speechSupported,

@@ -4,8 +4,8 @@ import { useTheme } from '../context/ThemeContext';
 import { FiSun, FiMoon } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { 
-  FiArrowRight, FiCpu, FiSearch, FiFileText, FiMic, FiLayers, 
-  FiCheckCircle, FiActivity, FiShield, FiZap, FiHeart, FiSliders
+  FiArrowRight, FiSearch, FiFileText, FiMic,
+  FiCheckCircle, FiActivity, FiShield, FiZap, FiSliders
 } from 'react-icons/fi';
 import { useInView } from 'framer-motion';
 
@@ -64,6 +64,21 @@ const useTypewriter = (words, typingSpeed = 50, deletingSpeed = 30, delay = 2500
   }, [text, isDeleting, wordIndex, words, typingSpeed, deletingSpeed, delay]);
 
   return text;
+};
+
+// StatCard Component to obey Rules of Hooks
+const StatCard = ({ stat, index }) => {
+  const { count, ref } = useCountUp(stat.end);
+  return (
+    <motion.div ref={ref}
+      custom={index} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
+      className="text-center space-y-2">
+      <div className={`text-4xl md:text-5xl font-black bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}>
+        {stat.prefix || ''}{stat.decimals ? count.toFixed(stat.decimals) : Math.round(count)}{stat.suffix || ''}
+      </div>
+      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{stat.label}</p>
+    </motion.div>
+  );
 };
 
 const fade = {
@@ -142,7 +157,6 @@ const PIPELINE = [
 
 export const Landing = () => {
   const { darkMode, toggleDarkMode } = useTheme();
-  const [activeChat, setActiveChat] = useState(2);
   const typingText = useTypewriter([
     'Patients Safer',
     'Hospitals Smarter',
@@ -331,19 +345,9 @@ export const Landing = () => {
       {/* ── STATS STRIP ─────────────────────────────────────── */}
       <section className="border-y border-slate-200/50 dark:border-slate-800/50 bg-white/60 dark:bg-slate-900/40 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {STATS.map((stat, i) => {
-            const { count, ref } = useCountUp(stat.end);
-            return (
-              <motion.div key={i} ref={ref}
-                custom={i} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
-                className="text-center space-y-2">
-                <div className={`text-4xl md:text-5xl font-black bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}>
-                  {stat.prefix || ''}{stat.decimals ? count.toFixed(stat.decimals) : Math.round(count)}{stat.suffix || ''}
-                </div>
-                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{stat.label}</p>
-              </motion.div>
-            );
-          })}
+          {STATS.map((stat, i) => (
+            <StatCard key={i} stat={stat} index={i} />
+          ))}
         </div>
       </section>
 

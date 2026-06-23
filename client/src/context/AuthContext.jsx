@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
@@ -11,6 +11,13 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Actions
+  const logout = useCallback(() => {
+    setToken('');
+    setUser(null);
+    localStorage.removeItem('token');
+  }, []);
 
   // Setup api instance default headers on token change
   useEffect(() => {
@@ -80,11 +87,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setToken('');
-    setUser(null);
-    localStorage.removeItem('token');
-  };
 
   const updateProfile = async (profileData) => {
     setError(null);
