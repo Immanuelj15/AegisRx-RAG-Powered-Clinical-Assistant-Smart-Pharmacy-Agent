@@ -24,23 +24,23 @@ export const Sidebar = ({ isOpen, onClose }) => {
       label: 'Main',
       items: [
         { name: 'Dashboard', path: getDashboardPath(), icon: <FiGrid size={18} />, roles: ['Patient','Pharmacist','Admin'] },
-        { name: 'Medicine Search', path: '/search', icon: <FiSearch size={18} />, roles: ['Patient','Pharmacist','Admin'] },
+        { name: 'Medicine Search', path: '/search', icon: <FiSearch size={18} />, roles: ['Pharmacist','Admin'] },
         { name: 'AI Medical Chat', path: '/chat', icon: <FiMessageSquare size={18} />, roles: ['Patient','Pharmacist','Admin'] },
+      ]
+    },
+    {
+      label: 'Patient Care',
+      items: [
+        { name: 'Symptom Checker', path: '/symptom-checker', icon: <FiActivity size={18} />, roles: ['Patient'], badge: 'AI' },
+        { name: 'Pill Calendar', path: '/calendar', icon: <FiCalendar size={18} />, roles: ['Patient'] },
+        { name: 'Health Report', path: '/health-report', icon: <FiHeart size={18} />, roles: ['Patient'], badge: 'PDF' },
       ]
     },
     {
       label: 'Clinical Tools',
       items: [
-        { name: 'Symptom Checker', path: '/symptom-checker', icon: <FiActivity size={18} />, roles: ['Patient','Pharmacist','Admin'], badge: 'AI' },
-        { name: 'Dosage Calculator', path: '/dosage-calc', icon: <FiSliders size={18} />, roles: ['Patient','Pharmacist','Admin'], badge: 'AI' },
-        { name: 'Health Report', path: '/health-report', icon: <FiHeart size={18} />, roles: ['Patient','Pharmacist','Admin'], badge: 'PDF' },
-        { name: 'Prescription Upload', path: '/prescription', icon: <FiUploadCloud size={18} />, roles: ['Patient','Pharmacist','Admin'] },
-        { name: 'Pill Calendar', path: '/calendar', icon: <FiCalendar size={18} />, roles: ['Patient','Pharmacist','Admin'] },
-      ]
-    },
-    {
-      label: 'Pharmacy',
-      items: [
+        { name: 'Prescription Analyzer', path: '/prescription', icon: <FiUploadCloud size={18} />, roles: ['Pharmacist'] },
+        { name: 'Dosage Calculator', path: '/dosage-calc', icon: <FiSliders size={18} />, roles: ['Pharmacist'], badge: 'AI' },
         { name: 'Prescription Writer', path: '/prescription-writer', icon: <FiFileText size={18} />, roles: ['Pharmacist','Admin'] },
         { name: 'System Inventory', path: '/inventory', icon: <FiLayers size={18} />, roles: ['Pharmacist','Admin'] },
       ]
