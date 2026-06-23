@@ -5,8 +5,64 @@ import {
   FiArrowRight, FiCpu, FiSearch, FiFileText, FiMic, FiLayers, 
   FiCheckCircle, FiActivity, FiShield, FiZap, FiHeart, FiSliders
 } from 'react-icons/fi';
-import { TypeAnimation } from 'react-type-animation';
-import CountUp from 'react-countup';
+import { useInView } from 'framer-motion';
+
+// Custom CountUp Hook
+const useCountUp = (end, duration = 2.5) => {
+  const [count, setCount] = useState(0);
+  const ref = React.useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "0px 0px -50px 0px" });
+
+  React.useEffect(() => {
+    if (!isInView) return;
+    let startTime;
+    let animationFrame;
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
+      // easeOutExpo
+      const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setCount(end * easeProgress);
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [end, duration, isInView]);
+
+  return { count, ref };
+};
+
+// Custom Typewriter Hook
+const useTypewriter = (words, typingSpeed = 50, deletingSpeed = 30, delay = 2500) => {
+  const [text, setText] = useState('');
+  const [wordIndex, setWordIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  React.useEffect(() => {
+    const currentWord = words[wordIndex];
+    let timeout;
+    
+    if (isDeleting) {
+      if (text === '') {
+        setIsDeleting(false);
+        setWordIndex((prev) => (prev + 1) % words.length);
+      } else {
+        timeout = setTimeout(() => setText(text.slice(0, -1)), deletingSpeed);
+      }
+    } else {
+      if (text === currentWord) {
+        timeout = setTimeout(() => setIsDeleting(true), delay);
+      } else {
+        timeout = setTimeout(() => setText(currentWord.slice(0, text.length + 1)), typingSpeed);
+      }
+    }
+    return () => clearTimeout(timeout);
+  }, [text, isDeleting, wordIndex, words, typingSpeed, deletingSpeed, delay]);
+
+  return text;
+};
 
 const fade = {
   hidden: { opacity: 0, y: 24 },
@@ -78,6 +134,12 @@ const PIPELINE = [
 
 export const Landing = () => {
   const [activeChat, setActiveChat] = useState(2);
+  const typingText = useTypewriter([
+    'Patients Safer',
+    'Hospitals Smarter',
+    'Pharmacists Faster',
+    'Dosages Accurate'
+  ]);
 
   const chatMessages = [
     { role: 'ai', text: 'Hello! I\'m AegisRx — your clinical AI assistant. How can I help today?' },
@@ -141,18 +203,9 @@ export const Landing = () => {
             <motion.h1 custom={1} variants={fade} initial="hidden" animate="visible"
               className="font-black text-slate-900 dark:text-white leading-none h-[80px] sm:h-auto">
               The AI That Keeps<br className="hidden sm:block" />
-              <span className="gradient-text">
-                <TypeAnimation
-                  sequence={[
-                    'Patients Safer', 2500,
-                    'Hospitals Smarter', 2500,
-                    'Pharmacists Faster', 2500,
-                    'Dosages Accurate', 2500,
-                  ]}
-                  wrapper="span"
-                  speed={50}
-                  repeat={Infinity}
-                />
+              <span className="gradient-text relative pr-1">
+                {typingText}
+                <span className="absolute right-0 top-0 h-full w-[2px] bg-primary-500 animate-pulse"></span>
               </span>
             </motion.h1>
 
@@ -262,24 +315,19 @@ export const Landing = () => {
       {/* ── STATS STRIP ─────────────────────────────────────── */}
       <section className="border-y border-slate-200/50 dark:border-slate-800/50 bg-white/60 dark:bg-slate-900/40 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {STATS.map((stat, i) => (
-            <motion.div key={i}
-              custom={i} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
-              className="text-center space-y-2">
-              <div className={`text-4xl md:text-5xl font-black bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}>
-                <CountUp 
-                  end={stat.end} 
-                  decimals={stat.decimals || 0} 
-                  prefix={stat.prefix || ''} 
-                  suffix={stat.suffix || ''} 
-                  enableScrollSpy 
-                  scrollSpyOnce 
-                  duration={2.5} 
-                />
-              </div>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{stat.label}</p>
-            </motion.div>
-          ))}
+          {STATS.map((stat, i) => {
+            const { count, ref } = useCountUp(stat.end);
+            return (
+              <motion.div key={i} ref={ref}
+                custom={i} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
+                className="text-center space-y-2">
+                <div className={`text-4xl md:text-5xl font-black bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}>
+                  {stat.prefix || ''}{stat.decimals ? count.toFixed(stat.decimals) : Math.round(count)}{stat.suffix || ''}
+                </div>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{stat.label}</p>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
