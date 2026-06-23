@@ -397,6 +397,28 @@ export const Landing = () => {
         </div>
       </section>
 
+      {/* ── SECURITY SECTION ──────────────────────────────── */}
+      <section className="max-w-7xl mx-auto px-6 pb-24">
+        <motion.div custom={0} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
+          className="rounded-[32px] overflow-hidden bg-slate-900 relative grid md:grid-cols-2 items-center shadow-2xl">
+          <div className="p-12 md:p-16 space-y-6 relative z-10">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-sm font-bold text-teal-400">
+              <FiShield size={14} /> HIPAA Compliant
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
+              Enterprise-Grade <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-400">Security</span>
+            </h2>
+            <p className="text-slate-400 text-lg leading-relaxed font-medium">
+              Your patient data is protected with end-to-end AES-256 encryption. We never train public LLMs on your clinical data, ensuring strict HIPAA compliance and absolute privacy.
+            </p>
+          </div>
+          <div className="h-full min-h-[300px] relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 to-transparent z-10 w-24 hidden md:block" />
+            <img src="/data-security.png" alt="Data Security" className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-90" />
+          </div>
+        </motion.div>
+      </section>
+
       {/* ── PIPELINE SECTION ──────────────────────────────── */}
       <section id="pipeline" className="bg-slate-900 dark:bg-slate-950 py-28 relative overflow-hidden">
         <div className="absolute inset-0 bg-mesh opacity-30" />
@@ -425,8 +447,17 @@ export const Landing = () => {
             </div>
 
             <motion.div custom={3} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
-              className="space-y-3">
-              {PIPELINE.map((step, i) => (
+              className="relative">
+              
+              {/* Isometric Image */}
+              <div className="relative rounded-[28px] overflow-hidden shadow-2xl mb-8 group border border-slate-700/50">
+                <img src="/features-iso.png" alt="AegisRx Dashboard Architecture" className="w-full object-cover aspect-video group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+              </div>
+
+              {/* Steps overlapping the image */}
+              <div className="space-y-3 relative z-10 -mt-16 px-4">
+                {PIPELINE.map((step, i) => (
                 <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl border ${step.color} ${
                   step.highlight
                     ? 'bg-gradient-to-r from-primary-600/20 to-teal-600/20'
@@ -447,6 +478,44 @@ export const Landing = () => {
             </motion.div>
           </div>
         </div>
+      </section>
+
+      {/* ── TRUSTED BY PROFESSIONALS ─────────────────────── */}
+      <section className="max-w-7xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-16 items-center">
+        <motion.div custom={0} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+          <div className="relative rounded-[32px] overflow-hidden shadow-2xl shadow-primary-500/10 aspect-[4/3] group border border-slate-200/50 dark:border-slate-700/50">
+            <img src="/doctor-tech.png" alt="Doctor using AegisRx" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent" />
+            <div className="absolute bottom-6 left-6 right-6">
+              <div className="glass-card p-5 rounded-2xl border border-white/20 backdrop-blur-md bg-slate-900/40">
+                <p className="text-white font-bold text-sm leading-relaxed">"AegisRx reduced our prescription verification time by 40% while catching critical interactions we almost missed."</p>
+                <p className="text-primary-300 text-xs font-semibold mt-2">— Dr. Sarah Jenkins, Clinical Pharmacy</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div custom={1} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }} className="space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-500 dark:text-slate-400">
+             <FiCheckCircle className="text-primary-500" size={14} /> Trusted Nationwide
+          </div>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight">
+            Designed for <br/><span className="gradient-text">Real Clinical Environments</span>
+          </h2>
+          <p className="text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-medium max-w-md">
+            Whether you are running a busy hospital pharmacy or a community clinic, AegisRx provides the instant, reliable, FDA-backed data you need to make confident clinical decisions.
+          </p>
+          <ul className="space-y-4 pt-4">
+            {['Pharmacist-first design', 'Zero-learning-curve UI', '24/7 Clinical Uptime'].map((item, i) => (
+              <li key={i} className="flex items-center gap-3 font-bold text-slate-700 dark:text-slate-300">
+                <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                  <FiCheckCircle size={12} />
+                </div>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </motion.div>
       </section>
 
       {/* ── CTA SECTION ──────────────────────────────────── */}
