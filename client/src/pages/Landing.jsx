@@ -475,6 +475,7 @@ export const Landing = () => {
                   )}
                 </div>
               ))}
+              </div>
             </motion.div>
           </div>
         </div>
