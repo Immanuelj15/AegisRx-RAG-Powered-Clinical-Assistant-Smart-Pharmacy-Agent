@@ -5,6 +5,8 @@ import {
   FiArrowRight, FiCpu, FiSearch, FiFileText, FiMic, FiLayers, 
   FiCheckCircle, FiActivity, FiShield, FiZap, FiHeart, FiSliders
 } from 'react-icons/fi';
+import { TypeAnimation } from 'react-type-animation';
+import CountUp from 'react-countup';
 
 const fade = {
   hidden: { opacity: 0, y: 24 },
@@ -15,10 +17,10 @@ const fade = {
 };
 
 const STATS = [
-  { value: '10M+', label: 'Patient Queries Handled', color: 'from-blue-500 to-cyan-400' },
-  { value: '99.2%', label: 'Drug Safety Accuracy', color: 'from-teal-500 to-emerald-400' },
-  { value: '<1s', label: 'RAG Response Time', color: 'from-violet-500 to-purple-400' },
-  { value: '50+', label: 'Hospital Integrations', color: 'from-orange-500 to-rose-400' },
+  { end: 10, suffix: 'M+', label: 'Patient Queries Handled', color: 'from-blue-500 to-cyan-400' },
+  { end: 99.2, decimals: 1, suffix: '%', label: 'Drug Safety Accuracy', color: 'from-teal-500 to-emerald-400' },
+  { end: 1, prefix: '<', suffix: 's', label: 'RAG Response Time', color: 'from-violet-500 to-purple-400' },
+  { end: 50, suffix: '+', label: 'Hospital Integrations', color: 'from-orange-500 to-rose-400' },
 ];
 
 const FEATURES = [
@@ -137,9 +139,21 @@ export const Landing = () => {
             </motion.div>
 
             <motion.h1 custom={1} variants={fade} initial="hidden" animate="visible"
-              className="font-black text-slate-900 dark:text-white leading-none">
-              The AI That Keeps<br />
-              <span className="gradient-text">Patients Safer</span>
+              className="font-black text-slate-900 dark:text-white leading-none h-[80px] sm:h-auto">
+              The AI That Keeps<br className="hidden sm:block" />
+              <span className="gradient-text">
+                <TypeAnimation
+                  sequence={[
+                    'Patients Safer', 2500,
+                    'Hospitals Smarter', 2500,
+                    'Pharmacists Faster', 2500,
+                    'Dosages Accurate', 2500,
+                  ]}
+                  wrapper="span"
+                  speed={50}
+                  repeat={Infinity}
+                />
+              </span>
             </motion.h1>
 
             <motion.p custom={2} variants={fade} initial="hidden" animate="visible"
@@ -253,7 +267,15 @@ export const Landing = () => {
               custom={i} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
               className="text-center space-y-2">
               <div className={`text-4xl md:text-5xl font-black bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`}>
-                {stat.value}
+                <CountUp 
+                  end={stat.end} 
+                  decimals={stat.decimals || 0} 
+                  prefix={stat.prefix || ''} 
+                  suffix={stat.suffix || ''} 
+                  enableScrollSpy 
+                  scrollSpyOnce 
+                  duration={2.5} 
+                />
               </div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{stat.label}</p>
             </motion.div>
