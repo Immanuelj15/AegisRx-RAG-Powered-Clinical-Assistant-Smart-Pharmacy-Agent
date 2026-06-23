@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { FiSun, FiMoon } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import { 
   FiArrowRight, FiSearch, FiFileText, FiMic,
   FiCheckCircle, FiActivity, FiShield, FiZap, FiSliders
 } from 'react-icons/fi';
-import { useInView } from 'framer-motion';
 
 // Custom CountUp Hook
 const useCountUp = (end, duration = 2.5) => {
@@ -82,10 +81,10 @@ const StatCard = ({ stat, index }) => {
 };
 
 const fade = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 40 },
   visible: (i = 0) => ({
     opacity: 1, y: 0,
-    transition: { duration: 0.65, ease: [0.22,1,0.36,1], delay: i * 0.12 }
+    transition: { duration: 1.2, ease: [0.22,1,0.36,1], delay: i * 0.15 }
   })
 };
 
@@ -164,6 +163,13 @@ export const Landing = () => {
     'Dosages Accurate'
   ]);
 
+  // Parallax scroll hooks
+  const { scrollY } = useScroll();
+  const yHeroBg = useTransform(scrollY, [0, 1000], [0, 150]);
+  const yOrbs = useTransform(scrollY, [0, 1000], [0, -200]);
+  const yImage1 = useTransform(scrollY, [500, 2500], [50, -100]); // Isometric Pipeline
+  const yImage2 = useTransform(scrollY, [1500, 3500], [50, -100]); // Doctor Tech
+
   const chatMessages = [
     { role: 'ai', text: 'Hello! I\'m AegisRx — your clinical AI assistant. How can I help today?' },
     { role: 'user', text: 'Do you have Paracetamol 500mg in stock?' },
@@ -217,10 +223,11 @@ export const Landing = () => {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden max-w-7xl mx-auto px-6 pt-20 pb-28 md:pt-28 md:pb-36">
-        {/* 3D Medical AI Background Overlay */}
-        <div 
+        {/* 3D Medical AI Background Overlay with Parallax */}
+        <motion.div 
           className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] opacity-15 dark:opacity-30 pointer-events-none mix-blend-screen"
           style={{ 
+            y: yHeroBg,
             backgroundImage: "url('/hero-ai.png')", 
             backgroundSize: 'cover', 
             backgroundPosition: 'center',
@@ -229,8 +236,8 @@ export const Landing = () => {
           }} 
         />
         
-        <div className="hero-orb-1" />
-        <div className="hero-orb-2" />
+        <motion.div className="hero-orb-1" style={{ y: yOrbs }} />
+        <motion.div className="hero-orb-2" style={{ y: yOrbs }} />
 
         <div className="grid lg:grid-cols-2 gap-16 items-center relative z-10">
           {/* Left */}
@@ -414,7 +421,7 @@ export const Landing = () => {
           </div>
           <div className="h-full min-h-[300px] relative">
             <div className="absolute inset-0 bg-gradient-to-r from-slate-900 to-transparent z-10 w-24 hidden md:block" />
-            <img src="/data-security.png" alt="Data Security" className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-90" />
+            <img src="/data-security.png" alt="Data Security" loading="lazy" className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-90" />
           </div>
         </motion.div>
       </section>
@@ -449,11 +456,11 @@ export const Landing = () => {
             <motion.div custom={3} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
               className="relative">
               
-              {/* Isometric Image */}
-              <div className="relative rounded-[28px] overflow-hidden shadow-2xl mb-8 group border border-slate-700/50">
-                <img src="/features-iso.png" alt="AegisRx Dashboard Architecture" className="w-full object-cover aspect-video group-hover:scale-105 transition-transform duration-700" />
+              {/* Isometric Image with Parallax */}
+              <motion.div className="relative rounded-[28px] overflow-hidden shadow-2xl mb-8 group border border-slate-700/50" style={{ y: yImage1 }}>
+                <img src="/features-iso.png" alt="AegisRx Dashboard Architecture" loading="lazy" className="w-full object-cover aspect-video group-hover:scale-105 transition-transform duration-[1.5s]" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
-              </div>
+              </motion.div>
 
               {/* Steps overlapping the image */}
               <div className="space-y-3 relative z-10 -mt-16 px-4">
@@ -484,8 +491,8 @@ export const Landing = () => {
       {/* ── TRUSTED BY PROFESSIONALS ─────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-16 items-center">
         <motion.div custom={0} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-          <div className="relative rounded-[32px] overflow-hidden shadow-2xl shadow-primary-500/10 aspect-[4/3] group border border-slate-200/50 dark:border-slate-700/50">
-            <img src="/doctor-tech.png" alt="Doctor using AegisRx" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+          <motion.div className="relative rounded-[32px] overflow-hidden shadow-2xl shadow-primary-500/10 aspect-[4/3] group border border-slate-200/50 dark:border-slate-700/50" style={{ y: yImage2 }}>
+            <img src="/doctor-tech.png" alt="Doctor using AegisRx" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1.5s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">
               <div className="glass-card p-5 rounded-2xl border border-white/20 backdrop-blur-md bg-slate-900/40">
@@ -493,7 +500,7 @@ export const Landing = () => {
                 <p className="text-primary-300 text-xs font-semibold mt-2">— Dr. Sarah Jenkins, Clinical Pharmacy</p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
         
         <motion.div custom={1} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }} className="space-y-6">
