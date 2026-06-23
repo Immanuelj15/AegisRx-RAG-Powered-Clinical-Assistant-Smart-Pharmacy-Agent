@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { 
   FiArrowRight, FiCpu, FiSearch, FiFileText, FiMic, FiLayers, 
@@ -83,6 +85,7 @@ const FEATURES = [
   {
     icon: <FiSearch size={24} />,
     color: 'from-blue-500 to-cyan-400',
+    iconColor: 'text-blue-500 dark:text-cyan-400',
     bg: 'from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/20',
     title: 'Hybrid RAG Search',
     desc: 'Dense + BM25 vector retrieval with cross-encoder reranking. Find any medicine by symptom, name, or code in milliseconds.'
@@ -90,6 +93,7 @@ const FEATURES = [
   {
     icon: <FiShield size={24} />,
     color: 'from-red-500 to-rose-400',
+    iconColor: 'text-red-500 dark:text-rose-400',
     bg: 'from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/20',
     title: 'FDA Safety Auditing',
     desc: 'Real-time openFDA recall checks, drug-drug interaction detection, and allergy conflict blocking at point of dispensing.'
@@ -97,6 +101,7 @@ const FEATURES = [
   {
     icon: <FiFileText size={24} />,
     color: 'from-violet-500 to-purple-400',
+    iconColor: 'text-violet-500 dark:text-purple-400',
     bg: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/20',
     title: 'Smart Prescription OCR',
     desc: 'Canvas-preprocessed Tesseract.js OCR extracts handwritten prescriptions and builds AM/PM/Night schedules instantly.'
@@ -104,6 +109,7 @@ const FEATURES = [
   {
     icon: <FiActivity size={24} />,
     color: 'from-teal-500 to-emerald-400',
+    iconColor: 'text-teal-500 dark:text-emerald-400',
     bg: 'from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20',
     title: 'AI Symptom Triage',
     desc: 'Patients describe symptoms — the clinical AI triages urgency (ER / GP / Self-Care), conditions, and OTC recommendations.'
@@ -111,6 +117,7 @@ const FEATURES = [
   {
     icon: <FiSliders size={24} />,
     color: 'from-orange-500 to-amber-400',
+    iconColor: 'text-orange-500 dark:text-amber-400',
     bg: 'from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/20',
     title: 'Dosage Calculator',
     desc: 'Weight, age, and renal-function-adjusted dosing with contraindications, monitoring parameters, and hepatic notes.'
@@ -118,6 +125,7 @@ const FEATURES = [
   {
     icon: <FiMic size={24} />,
     color: 'from-pink-500 to-rose-400',
+    iconColor: 'text-pink-500 dark:text-rose-400',
     bg: 'from-pink-50 to-rose-50 dark:from-pink-950/30 dark:to-rose-950/20',
     title: 'Voice AI Interface',
     desc: 'Speak naturally to search, consult, or get dose reminders. Text-to-speech reads back AI responses hands-free.'
@@ -133,6 +141,7 @@ const PIPELINE = [
 ];
 
 export const Landing = () => {
+  const { darkMode, toggleDarkMode } = useTheme();
   const [activeChat, setActiveChat] = useState(2);
   const typingText = useTypewriter([
     'Patients Safer',
@@ -174,10 +183,17 @@ export const Landing = () => {
             </nav>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={toggleDarkMode}
+                className="p-2.5 rounded-xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200/50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors mr-2"
+                title="Toggle Dark Mode"
+              >
+                {darkMode ? <FiSun size={18} /> : <FiMoon size={18} />}
+              </button>
               <Link to="/login" className="btn-secondary text-sm px-5 py-2.5">
                 Sign In
               </Link>
-              <Link to="/register" className="btn-primary text-sm px-5 py-2.5">
+              <Link to="/register" className="btn-primary text-sm px-5 py-2.5 hidden sm:inline-flex">
                 Start Free <FiArrowRight size={15} />
               </Link>
             </div>
@@ -354,7 +370,7 @@ export const Landing = () => {
               custom={i} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
               className="glass-card p-7 space-y-4 group cursor-default">
               <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feat.bg} flex items-center justify-center`}>
-                <div className={`bg-gradient-to-br ${feat.color} bg-clip-text text-transparent`}>
+                <div className={`${feat.iconColor}`}>
                   {feat.icon}
                 </div>
               </div>
