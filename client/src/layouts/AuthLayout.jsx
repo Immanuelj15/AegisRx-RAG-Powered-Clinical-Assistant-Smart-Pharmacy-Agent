@@ -21,7 +21,7 @@ export const AuthLayout = () => {
         <div className="absolute inset-0 opacity-10" style={{backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='2' fill='white'/%3E%3C/svg%3E\")", backgroundRepeat: 'repeat'}} />
         
         <Link to="/" className="flex items-center gap-3 relative z-10">
-          <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center text-white font-black text-xl">A</div>
+          <img src="/logo.png" alt="AegisRx" className="w-11 h-11 rounded-2xl object-cover shadow-lg" />
           <span className="font-black text-2xl text-white tracking-tight">AegisRx</span>
         </Link>
 
@@ -64,7 +64,7 @@ export const AuthLayout = () => {
         <div className="flex justify-between items-center px-8 py-5">
           {/* Mobile logo */}
           <Link to="/" className="flex items-center gap-2.5 lg:hidden">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-black">A</div>
+            <img src="/logo.png" alt="AegisRx" className="w-9 h-9 rounded-xl object-cover" />
             <span className="font-black text-xl gradient-text">AegisRx</span>
           </Link>
           <div className="lg:ml-auto">

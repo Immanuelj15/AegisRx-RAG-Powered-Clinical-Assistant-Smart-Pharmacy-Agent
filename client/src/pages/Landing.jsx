@@ -184,9 +184,7 @@ export const Landing = () => {
         <div className="glass-panel border-b border-slate-200/40 dark:border-slate-800/30">
           <div className="max-w-7xl mx-auto px-6 h-18 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-primary-500/30">
-                A
-              </div>
+              <img src="/logo.png" alt="AegisRx Logo" className="w-10 h-10 rounded-2xl object-cover shadow-lg shadow-primary-500/30" />
               <div>
                 <span className="font-black text-xl gradient-text tracking-tight">AegisRx</span>
                 <p className="text-[10px] font-bold text-slate-400 -mt-0.5 tracking-widest uppercase">Clinical AI Platform</p>
@@ -297,9 +295,7 @@ export const Landing = () => {
             <div className="relative glass-card border border-white/30 dark:border-slate-700/50 p-6 shadow-2xl">
               {/* Chat header */}
               <div className="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-black shadow-md shadow-primary-500/30">
-                  A
-                </div>
+                <img src="/logo.png" alt="AegisRx" className="w-10 h-10 rounded-2xl object-cover shadow-md shadow-primary-500/30" />
                 <div className="flex-1">
                   <p className="font-bold text-slate-800 dark:text-slate-100">AegisRx Clinical AI</p>
                   <p className="text-xs text-teal-500 flex items-center gap-1.5">
@@ -564,7 +560,7 @@ export const Landing = () => {
       <footer className="border-t border-slate-200/40 dark:border-slate-800/30 bg-white/80 dark:bg-slate-900/60 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-black shadow-sm">A</div>
+            <img src="/logo.png" alt="AegisRx Logo" className="w-8 h-8 rounded-xl object-cover shadow-sm" />
             <span className="font-bold text-slate-700 dark:text-slate-300">AegisRx <span className="text-slate-400 font-normal">© 2026</span></span>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-sm font-semibold text-slate-400 hover:[&>a]:text-primary-500">

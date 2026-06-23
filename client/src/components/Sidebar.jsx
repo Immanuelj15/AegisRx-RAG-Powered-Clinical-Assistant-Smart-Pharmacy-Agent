@@ -69,9 +69,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         {/* Brand */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200/60 dark:border-slate-800/40 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-black text-base shadow-lg shadow-primary-500/30">
-              A
-            </div>
+            <img src="/logo.png" alt="AegisRx" className="w-9 h-9 rounded-2xl object-cover shadow-lg shadow-primary-500/30" />
             <div>
               <span className="font-black text-lg gradient-text tracking-tight">AegisRx</span>
               <p className="text-[9px] font-bold text-slate-400 tracking-widest uppercase -mt-0.5">Clinical AI</p>
