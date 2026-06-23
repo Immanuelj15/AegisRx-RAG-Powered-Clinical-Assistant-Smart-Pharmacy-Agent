@@ -10,7 +10,9 @@ const {
   suggestAlternative,
   getChatSessions,
   exportSignedPrescription,
-  exportProcurementPO
+  exportProcurementPO,
+  matchClinicalTrials,
+  auditFdaRecall
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -63,5 +65,9 @@ router.post('/export-prescription-pdf', protect, (req, res) => {
 
 router.post('/export-signed-prescription-pdf', protect, exportSignedPrescription);
 router.post('/export-po-pdf', protect, exportProcurementPO);
+
+// Clinical Trial & openFDA Safety Routes
+router.get('/trials/:condition', protect, matchClinicalTrials);
+router.get('/fda-audit/:name', protect, auditFdaRecall);
 
 module.exports = router;

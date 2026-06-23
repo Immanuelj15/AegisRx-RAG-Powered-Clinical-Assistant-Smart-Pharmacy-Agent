@@ -8,7 +8,8 @@ import {
   FiRefreshCw, 
   FiCheckCircle, 
   FiAlertCircle,
-  FiDownload
+  FiDownload,
+  FiShield
 } from 'react-icons/fi';
 import { Loader } from '../components/Loader';
 
@@ -17,6 +18,12 @@ export const Inventory = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
+
+  // FDA Recall Safety Audit state
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditMed, setAuditMed] = useState(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState(null);
 
   // Form states for Add/Edit
   const [showModal, setShowModal] = useState(false);
@@ -171,6 +178,23 @@ export const Inventory = () => {
     }
   };
 
+  const handleRunFdaAudit = async (med) => {
+    setAuditMed(med);
+    setAuditResult(null);
+    setShowAuditModal(true);
+    setAuditLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/ai/fda-audit/${encodeURIComponent(med.Medicine_Name)}`);
+      if (res.data && res.data.success) {
+        setAuditResult(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Control panel */}
@@ -266,6 +290,13 @@ export const Inventory = () => {
                         title="Delete Product"
                       >
                         <FiTrash2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleRunFdaAudit(med)}
+                        className="p-1.5 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg"
+                        title="FDA Recall Audit"
+                      >
+                        <FiShield size={14} />
                       </button>
                     </td>
                   </tr>
@@ -451,6 +482,89 @@ export const Inventory = () => {
                 Save Clinical Item
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* FDA Recall Audit Modal */}
+      {showAuditModal && auditMed && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-card p-6 shadow-2xl border border-slate-100 dark:border-slate-800 text-xs">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                FDA Safety Recall Audit Report
+              </h3>
+              <button
+                onClick={() => setShowAuditModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-slate-400 font-bold">Audit Item</p>
+                <p className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">
+                  {auditMed.Medicine_Name} (ID: {auditMed.Medicine_ID})
+                </p>
+                <p className="text-[10px] text-slate-450 mt-0.5">Generic: {auditMed.Generic_Name}</p>
+              </div>
+
+              {auditLoading ? (
+                <div className="py-8 text-center text-xs font-semibold text-slate-500 animate-pulse">
+                  Connecting to openFDA live database API...
+                </div>
+              ) : auditResult ? (
+                <div className="space-y-3">
+                  <div className={`p-4 rounded-xl border flex items-start space-x-2.5 ${
+                    auditResult.isRecalled 
+                      ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900/35' 
+                      : 'bg-emerald-50/50 border-emerald-200/50 dark:bg-emerald-950/20 dark:border-emerald-900/35'
+                  }`}>
+                    <div className="mt-0.5">
+                      {auditResult.isRecalled ? (
+                        <span className="text-red-500">❌</span>
+                      ) : (
+                        <span className="text-emerald-500">✅</span>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-extrabold text-slate-800 dark:text-slate-200 text-xs">
+                        {auditResult.isRecalled ? 'RECALL WARNING TRIGGERED' : 'SAFETY VERIFICATION PASSED'}
+                      </p>
+                      <p className="text-[10px] text-slate-550 dark:text-slate-400 leading-relaxed">
+                        {auditResult.isRecalled 
+                          ? `This product description has active enforcement matches in the FDA recalls database. Batch safety actions are ongoing.` 
+                          : `No active Class I, Class II, or Class III recalls are logged in the openFDA database matching this product description.`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {auditResult.isRecalled && (
+                    <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                      <p className="font-bold text-red-650 dark:text-red-400 text-xs">Recall Batch Details:</p>
+                      {auditResult.recalls.map((rec, i) => (
+                        <div key={i} className="space-y-1 text-[10px] border-t border-slate-100 dark:border-slate-850 pt-2 first:border-0 first:pt-0 text-slate-650 dark:text-slate-405 leading-relaxed">
+                          <p><span className="font-bold text-slate-450 dark:text-slate-500">Firm:</span> {rec.recallingFirm}</p>
+                          <p><span className="font-bold text-slate-450 dark:text-slate-500">FDA Reason:</span> {rec.reason}</p>
+                          <p><span className="font-bold text-slate-450 dark:text-slate-500">Classification:</span> {rec.classification} ({rec.voluntaryMandated})</p>
+                          <p><span className="font-bold text-slate-450 dark:text-slate-500">Report Date:</span> {rec.reportDate} | Number: {rec.recallNumber}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => setShowAuditModal(false)}
+                className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all mt-2"
+              >
+                Close Audit Report
+              </button>
+            </div>
           </div>
         </div>
       )}

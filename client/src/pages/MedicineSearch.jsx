@@ -29,6 +29,10 @@ export const MedicineSearch = () => {
   const [ddiResults, setDdiResults] = useState(null);
   const [ddiLoading, setDdiLoading] = useState(false);
 
+  // FDA Recall Safety Audit state
+  const [fdaAudit, setFdaAudit] = useState(null);
+  const [fdaLoading, setFdaLoading] = useState(false);
+
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -82,8 +86,9 @@ export const MedicineSearch = () => {
     }
   };
 
-  const openMedDetails = (med) => {
+  const openMedDetails = async (med) => {
     setSelectedMed(med);
+    setFdaAudit(null);
     if (med.Stock === 0 && med.Alternative) {
       const foundAlt = allMedicines.find(m => 
         m.Medicine_Name.toLowerCase().includes(med.Alternative.toLowerCase()) ||
@@ -92,6 +97,18 @@ export const MedicineSearch = () => {
       setAlternativeMed(foundAlt || { Medicine_Name: med.Alternative, Note: 'Generic recommendation.' });
     } else {
       setAlternativeMed(null);
+    }
+
+    try {
+      setFdaLoading(true);
+      const res = await axios.get(`${API_URL}/ai/fda-audit/${encodeURIComponent(med.Medicine_Name)}`, config);
+      if (res.data && res.data.success) {
+        setFdaAudit(res.data);
+      }
+    } catch (err) {
+      console.error('FDA safety recall check failed:', err);
+    } finally {
+      setFdaLoading(false);
     }
   };
 
@@ -376,14 +393,54 @@ export const MedicineSearch = () => {
             {/* Information Grid */}
             <div className="space-y-4 leading-relaxed">
               {checkAllergyAlert(selectedMed) && (
-                <div className="p-3.5 bg-red-600 text-white rounded-xl font-bold flex items-start space-x-2 shadow-md">
+                <div className="p-3.5 bg-red-650 text-white rounded-xl font-bold flex items-start space-x-2 shadow-md">
                   <FiAlertCircle size={18} className="flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="uppercase text-[10px] tracking-wider">CRITICAL ALLERGY CONFLICT BLOCKED</p>
+                    <p className="uppercase text-[10px] tracking-wider font-extrabold">CRITICAL ALLERGY CONFLICT BLOCKED</p>
                     <p className="font-medium mt-0.5">This medication matches the allergy profile in your clinical settings. Purchasing or dispensing is blocked.</p>
                   </div>
                 </div>
               )}
+
+              {/* FDA Safety Recall & Shortage Auditor Banner */}
+              {fdaLoading ? (
+                <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl text-[10px] font-bold text-slate-550 text-center animate-pulse border border-slate-200 dark:border-slate-850">
+                  Checking openFDA safety recall registry database...
+                </div>
+              ) : fdaAudit ? (
+                <div className={`p-3.5 border rounded-xl space-y-2 ${
+                  fdaAudit.isRecalled 
+                    ? 'bg-red-50 border-red-200 dark:bg-red-950/15 dark:border-red-900/35' 
+                    : 'bg-emerald-50/50 border-emerald-250 dark:bg-emerald-950/10 dark:border-emerald-900/25'
+                }`}>
+                  <div className="flex justify-between items-center text-[10px] font-extrabold">
+                    <span className="text-slate-450 dark:text-slate-500 uppercase tracking-wider">FDA SAFETY RECALL AUDIT</span>
+                    <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-black tracking-wide ${
+                      fdaAudit.isRecalled ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-350'
+                    }`}>
+                      {fdaAudit.isRecalled ? 'BATCH RECALL MATCH' : 'SAFE / NO REC'}
+                    </span>
+                  </div>
+
+                  {fdaAudit.isRecalled ? (
+                    <div className="space-y-1 text-[10px] text-red-650 dark:text-red-400">
+                      <p className="font-extrabold">
+                        Recalling Firm: <span className="underline">{fdaAudit.recalls[0].recallingFirm}</span> ({fdaAudit.recalls[0].recallNumber})
+                      </p>
+                      <p className="leading-normal font-medium mt-0.5">
+                        <span className="font-bold text-slate-700 dark:text-slate-300">FDA Reason:</span> {fdaAudit.recalls[0].reason}
+                      </p>
+                      <p className="text-[9px] text-slate-450 dark:text-slate-500">
+                        Classification: {fdaAudit.recalls[0].classification} | Report Date: {fdaAudit.recalls[0].reportDate}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-emerald-650 dark:text-emerald-450 font-semibold leading-normal">
+                      No active enforcement actions or drug recall batches match this product description in the active FDA registry database.
+                    </p>
+                  )}
+                </div>
+              ) : null}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -465,6 +522,28 @@ export const MedicineSearch = () => {
                   </div>
                 </div>
               )}
+
+              {/* Action Buttons */}
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex space-x-3">
+                <button
+                  type="button"
+                  disabled={checkAllergyAlert(selectedMed) || (fdaAudit && fdaAudit.isRecalled) || selectedMed.Stock <= 0}
+                  onClick={() => {
+                    alert(`Clinical dispense successful! Dispensed 1 course of ${selectedMed.Medicine_Name}.`);
+                    setSelectedMed(null);
+                  }}
+                  className="flex-1 py-2 bg-primary-500 hover:bg-primary-600 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-primary-500/10 disabled:opacity-40 disabled:hover:bg-primary-500 flex items-center justify-center space-x-1.5"
+                >
+                  <span>Dispense Product</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMed(null)}
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-450 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
