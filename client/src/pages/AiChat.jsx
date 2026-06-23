@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { API_URL } from '../context/AuthContext';
 import { useVoice } from '../hooks/useVoice';
@@ -244,15 +245,31 @@ export const AiChat = () => {
                   </div>
                 )}
                 
-                <div className={`p-4 rounded-2xl text-xs leading-relaxed space-y-2 border ${
+                <div className={`p-4 rounded-2xl text-xs leading-relaxed border ${
                   msg.role === 'user'
                     ? 'bg-primary-500 text-white border-transparent shadow-sm'
                     : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 border-slate-200/40 dark:border-slate-700/50'
                 }`}>
-                  {/* Handle basic markdown formatting like headers & bullet points */}
-                  <div className="whitespace-pre-line font-medium">
-                    {msg.content}
-                  </div>
+                  {msg.role === 'user' ? (
+                    <p className="font-medium whitespace-pre-line">{msg.content}</p>
+                  ) : (
+                    <div className="prose prose-xs prose-slate dark:prose-invert max-w-none
+                      [&>h1]:text-sm [&>h1]:font-extrabold [&>h1]:mb-2 [&>h1]:mt-3
+                      [&>h2]:text-xs [&>h2]:font-extrabold [&>h2]:mb-1.5 [&>h2]:mt-3 [&>h2]:text-primary-600 dark:[&>h2]:text-primary-400
+                      [&>h3]:text-xs [&>h3]:font-bold [&>h3]:mb-1 [&>h3]:mt-2
+                      [&>p]:mb-2 [&>p]:leading-relaxed [&>p]:font-medium
+                      [&>ul]:my-2 [&>ul]:pl-4 [&>ul>li]:mb-1 [&>ul>li]:list-disc [&>ul>li]:font-medium
+                      [&>ol]:my-2 [&>ol]:pl-4 [&>ol>li]:mb-1 [&>ol>li]:list-decimal [&>ol>li]:font-medium
+                      [&>table]:w-full [&>table]:text-[10px] [&>table]:border-collapse [&>table]:my-2
+                      [&>table_th]:px-2 [&>table_th]:py-1 [&>table_th]:bg-slate-200 dark:[&>table_th]:bg-slate-700 [&>table_th]:font-extrabold [&>table_th]:text-left [&>table_th]:border [&>table_th]:border-slate-300 dark:[&>table_th]:border-slate-600
+                      [&>table_td]:px-2 [&>table_td]:py-1 [&>table_td]:border [&>table_td]:border-slate-200 dark:[&>table_td]:border-slate-700
+                      [&>blockquote]:border-l-4 [&>blockquote]:border-primary-400 [&>blockquote]:pl-3 [&>blockquote]:italic [&>blockquote]:text-slate-500
+                      [&>hr]:border-slate-300 dark:[&>hr]:border-slate-600 [&>hr]:my-3
+                      [&>strong]:font-extrabold [&>em]:italic
+                    ">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
 
                 {msg.role === 'user' && (
