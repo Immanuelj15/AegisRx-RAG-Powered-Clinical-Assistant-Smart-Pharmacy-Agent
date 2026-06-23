@@ -31,7 +31,9 @@ export const DashboardLayout = () => {
   const getPageTitle = (pathname) => {
     if (pathname.includes('/search')) return 'Medicine Inventory & Alternatives';
     if (pathname.includes('/chat')) return 'AegisRx Consultation Chat';
+    if (pathname.includes('/prescription-writer')) return 'Digital Prescription Writer';
     if (pathname.includes('/prescription')) return 'AegisRx Prescription Analyzer';
+    if (pathname.includes('/calendar')) return 'Clinical Intake Schedule';
     if (pathname.includes('/inventory')) return 'Medicine Catalog Management';
     if (pathname.includes('/admin')) return 'Administration & Analytics Panel';
     if (pathname.includes('/profile')) return 'Update Clinical Profile';

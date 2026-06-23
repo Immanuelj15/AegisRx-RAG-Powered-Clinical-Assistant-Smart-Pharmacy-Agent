@@ -9,7 +9,8 @@ import {
   FiUsers, 
   FiLayers, 
   FiFileText,
-  FiX
+  FiX,
+  FiCalendar
 } from 'react-icons/fi';
 
 export const Sidebar = ({ isOpen, onClose }) => {
@@ -46,6 +47,18 @@ export const Sidebar = ({ isOpen, onClose }) => {
       path: '/prescription',
       icon: <FiUploadCloud size={18} />,
       roles: ['Patient', 'Pharmacist', 'Admin']
+    },
+    {
+      name: 'Pill Calendar',
+      path: '/calendar',
+      icon: <FiCalendar size={18} />,
+      roles: ['Patient', 'Pharmacist', 'Admin']
+    },
+    {
+      name: 'Prescription Writer',
+      path: '/prescription-writer',
+      icon: <FiFileText size={18} />,
+      roles: ['Pharmacist', 'Admin']
     },
     {
       name: 'System Inventory',

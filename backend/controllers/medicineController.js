@@ -402,10 +402,69 @@ const syncCatalogToRAG = async () => {
   }
 };
 
+// @desc    Check drug-drug interactions for a list of medicine names
+// @route   POST /api/medicine/interaction-check
+// @access  Private
+const checkInteractions = async (req, res) => {
+  try {
+    const { medicines } = req.body;
+
+    if (!medicines || !Array.isArray(medicines) || medicines.length < 2) {
+      return res.status(400).json({ success: false, error: 'At least two medicines are required for interaction checking' });
+    }
+
+    const cleanNames = medicines.map(name => name.trim().toLowerCase());
+    const interactionWarnings = [];
+    const Interaction = require('../models/Interaction');
+
+    for (let i = 0; i < cleanNames.length; i++) {
+      for (let j = i + 1; j < cleanNames.length; j++) {
+        // Simple helper to isolate drug name from strengths (e.g. "Ibuprofen 400mg" -> "ibuprofen")
+        const drugAWord = cleanNames[i].split(' ')[0];
+        const drugBWord = cleanNames[j].split(' ')[0];
+
+        let match = null;
+        if (process.env.MONGO_CONNECTED === 'true') {
+          match = await Interaction.findOne({
+            $or: [
+              { drugA: drugAWord, drugB: drugBWord },
+              { drugA: drugBWord, drugB: drugAWord }
+            ]
+          });
+        } else {
+          match = mockDb.getMockInteractions().find(item => 
+            (item.drugA === drugAWord && item.drugB === drugBWord) ||
+            (item.drugA === drugBWord && item.drugB === drugAWord)
+          );
+        }
+
+        if (match) {
+          interactionWarnings.push({
+            drugA: medicines[i],
+            drugB: medicines[j],
+            severity: match.severity,
+            description: match.description
+          });
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      hasInteractions: interactionWarnings.length > 0,
+      warnings: interactionWarnings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getMedicines,
   searchMedicine,
   uploadMedicinesCsv,
   updateMedicine,
-  deleteMedicine
+  deleteMedicine,
+  checkInteractions
 };
+

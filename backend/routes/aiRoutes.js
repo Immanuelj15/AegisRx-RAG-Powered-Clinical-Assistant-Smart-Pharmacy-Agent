@@ -8,7 +8,9 @@ const {
   understandPrescription, 
   answerFaq, 
   suggestAlternative,
-  getChatSessions
+  getChatSessions,
+  exportSignedPrescription,
+  exportProcurementPO
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -58,5 +60,8 @@ router.post('/export-prescription-pdf', protect, (req, res) => {
   const { analysis } = req.body;
   generatePrescriptionPDF(res, analysis);
 });
+
+router.post('/export-signed-prescription-pdf', protect, exportSignedPrescription);
+router.post('/export-po-pdf', protect, exportProcurementPO);
 
 module.exports = router;

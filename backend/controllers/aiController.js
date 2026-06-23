@@ -117,10 +117,9 @@ const understandPrescription = async (req, res) => {
 
     console.log(`Prescription uploaded: ${req.file.filename}`);
 
-    // OCR text extraction simulation
-    // In a real environment, we would run Tesseract OCR.
-    // We simulate OCR extraction by matching keywords or parsing sample mock prescription text.
-    let extractedText = "Rx: Paracetamol 500mg - Take 1 tablet morning, afternoon, night after food. Also Amoxicillin 500mg capsules - Take 1 capsule 3 times daily before food for 7 days. Dr. Robert.";
+    // OCR text extraction
+    // Accepts client-submitted OCR extracted text or fallbacks to mock OCR simulation
+    let extractedText = req.body.extractedText || "Rx: Paracetamol 500mg - Take 1 tablet morning, afternoon, night after food. Also Amoxicillin 500mg capsules - Take 1 capsule 3 times daily before food for 7 days. Dr. Robert.";
 
     const systemPrompt = `You are a professional medical system OCR text interpreter. Your job is to parse messy handwritten text or prescription transcriptions and output a neat, structured medication schedule.
 Output columns:
@@ -241,10 +240,52 @@ const getChatSessions = async (req, res) => {
   }
 };
 
+// @desc    Export Digitally Signed Prescription PDF
+// @route   POST /api/ai/export-signed-prescription-pdf
+// @access  Private
+const exportSignedPrescription = async (req, res) => {
+  try {
+    const { patientName, age, gender, doctorName, medicines, signatureBase64 } = req.body;
+    const pdfGenerator = require('../utils/pdfGenerator');
+    pdfGenerator.generateSignedPrescriptionPDF(res, {
+      patientName,
+      age,
+      gender,
+      doctorName,
+      medicines,
+      signatureBase64
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Export Procurement Purchase Order PDF
+// @route   POST /api/ai/export-po-pdf
+// @access  Private
+const exportProcurementPO = async (req, res) => {
+  try {
+    const pdfGenerator = require('../utils/pdfGenerator');
+    let lowStockMeds = [];
+
+    if (process.env.MONGO_CONNECTED === 'true') {
+      lowStockMeds = await Medicine.find({ Stock: { $lt: 10 } });
+    } else {
+      lowStockMeds = mockDb.getMockMedicines().filter(m => m.Stock < 10);
+    }
+
+    pdfGenerator.generatePoPDF(res, lowStockMeds);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   chatAgent,
   understandPrescription,
   answerFaq,
   suggestAlternative,
-  getChatSessions
+  getChatSessions,
+  exportSignedPrescription,
+  exportProcurementPO
 };

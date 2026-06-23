@@ -7,7 +7,8 @@ import {
   FiPlus, 
   FiRefreshCw, 
   FiCheckCircle, 
-  FiAlertCircle 
+  FiAlertCircle,
+  FiDownload
 } from 'react-icons/fi';
 import { Loader } from '../components/Loader';
 
@@ -144,17 +145,52 @@ export const Inventory = () => {
     }
   };
 
+  const handleDownloadPO = async () => {
+    try {
+      setLoading(true);
+      setMessage('');
+      setIsError(false);
+      const res = await axios.post(`${API_URL}/ai/export-po-pdf`, {}, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Procurement_PO_${new Date().toISOString().slice(0, 10)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      setMessage('Procurement PO PDF generated and downloaded successfully!');
+    } catch (err) {
+      console.error(err);
+      setIsError(true);
+      setMessage('Failed to generate procurement PO PDF.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Control panel */}
       <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <button
-          onClick={handleOpenAdd}
-          className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center space-x-1.5"
-        >
-          <FiPlus size={14} />
-          <span>Add New Product</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleOpenAdd}
+            className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center space-x-1.5"
+          >
+            <FiPlus size={14} />
+            <span>Add New Product</span>
+          </button>
+          <button
+            onClick={handleDownloadPO}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center space-x-1.5"
+          >
+            <FiDownload size={14} />
+            <span>Draft PO PDF</span>
+          </button>
+        </div>
 
         <button
           onClick={fetchInventory}
@@ -206,11 +242,13 @@ export const Inventory = () => {
                     <td className="p-4 text-slate-500">{med.Brand}</td>
                     <td className="p-4 text-center">
                       <span className={`px-2 py-0.5 rounded font-extrabold text-[10px] ${
-                        med.Stock > 0 
-                          ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/20 dark:text-teal-400' 
-                          : 'bg-red-50 text-red-650 dark:bg-red-950/20 dark:text-red-400'
+                        med.Stock <= 0
+                          ? 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-200/50 dark:border-red-900/30'
+                          : med.Stock < 10
+                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-250 dark:border-rose-900/30 animate-pulse'
+                          : 'bg-teal-50 text-teal-700 dark:bg-teal-950/20 dark:text-teal-400'
                       }`}>
-                        {med.Stock} units
+                        {med.Stock <= 0 ? 'Out of Stock' : med.Stock < 10 ? `Low: ${med.Stock} units` : `${med.Stock} units`}
                       </span>
                     </td>
                     <td className="p-4 text-right font-black text-slate-800 dark:text-slate-200">${med.Price?.toFixed(2)}</td>

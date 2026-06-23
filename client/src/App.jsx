@@ -21,6 +21,8 @@ import { PrescriptionUpload } from './pages/PrescriptionUpload';
 import { Inventory } from './pages/Inventory';
 import { AdminPanel } from './pages/AdminPanel';
 import { Profile } from './pages/Profile';
+import { PillCalendar } from './pages/PillCalendar';
+import { PrescriptionWriter } from './pages/PrescriptionWriter';
 import { NotFound } from './pages/NotFound';
 
 function App() {
@@ -50,6 +52,8 @@ function App() {
               <Route path="/search" element={<MedicineSearch />} />
               <Route path="/chat" element={<AiChat />} />
               <Route path="/prescription" element={<PrescriptionUpload />} />
+              <Route path="/calendar" element={<PillCalendar />} />
+              <Route path="/prescription-writer" element={<PrescriptionWriter />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/profile" element={<Profile />} />

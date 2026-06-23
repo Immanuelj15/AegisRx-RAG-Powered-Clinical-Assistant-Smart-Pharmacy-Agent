@@ -12,6 +12,7 @@ const authRoutes = require('./backend/routes/authRoutes');
 const medicineRoutes = require('./backend/routes/medicineRoutes');
 const aiRoutes = require('./backend/routes/aiRoutes');
 const analyticsRoutes = require('./backend/routes/analyticsRoutes');
+const scheduleRoutes = require('./backend/routes/scheduleRoutes');
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/medicine', medicineRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', analyticsRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // Health Check Route
 app.get('/health', (req, res) => {
@@ -114,6 +116,25 @@ const autoSeedOnStartup = async () => {
           }
         }
         console.log('Seeded default demo users in MongoDB successfully.');
+      }
+    }
+
+    // Sync MongoDB interactions
+    if (process.env.MONGO_CONNECTED === 'true') {
+      const Interaction = require('./backend/models/Interaction');
+      const interactionCount = await Interaction.countDocuments({});
+      if (interactionCount === 0) {
+        console.log('Interaction catalog empty. Seeding default interactions in MongoDB...');
+        const defaultInteractions = [
+          { drugA: 'ibuprofen', drugB: 'aspirin', severity: 'High', description: 'Both are NSAIDs. Concomitant use increases risk of gastrointestinal ulcers and bleeding.' },
+          { drugA: 'ibuprofen', drugB: 'warfarin', severity: 'High', description: 'NSAID and anticoagulant combination. Severe risk of major gastrointestinal and systemic hemorrhage.' },
+          { drugA: 'lisinopril', drugB: 'spironolactone', severity: 'Moderate', description: 'ACE inhibitor and potassium-sparing diuretic combination. High risk of developing hyperkalemia (dangerously high blood potassium levels).' },
+          { drugA: 'metformin', drugB: 'contrast dye', severity: 'High', description: 'Iodinated contrast media and Metformin. High risk of lactic acidosis. Temporarily withhold Metformin before/after imaging studies.' },
+          { drugA: 'amoxicillin', drugB: 'methotrexate', severity: 'Moderate', description: 'Penicillins reduce renal clearance of methotrexate, potentially increasing methotrexate toxicity risks.' },
+          { drugA: 'cetirizine', drugB: 'alcohol', severity: 'Moderate', description: 'Central nervous system depressant synergy. Enhances drowsiness, cognitive impairment, and psychomotor coordination deficits.' }
+        ];
+        await Interaction.insertMany(defaultInteractions);
+        console.log('Seeded interactions in MongoDB successfully.');
       }
     }
 

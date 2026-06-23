@@ -37,6 +37,8 @@ export const PrescriptionUpload = () => {
     }
   };
 
+  const [ocrProgress, setOcrProgress] = useState(null);
+
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) {
@@ -47,9 +49,37 @@ export const PrescriptionUpload = () => {
     setLoading(true);
     setError('');
     setResult(null);
+    setOcrProgress(0);
 
+    let extractedText = '';
+    
+    // 1. Run local Tesseract OCR on Image
+    try {
+      const Tesseract = await import('tesseract.js');
+      const ocrResult = await Tesseract.default.recognize(
+        file,
+        'eng',
+        {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              setOcrProgress(Math.round(m.progress * 100));
+            }
+          }
+        }
+      );
+      extractedText = ocrResult.data.text;
+    } catch (ocrErr) {
+      console.warn('Tesseract OCR failed client-side, falling back to backend parser:', ocrErr);
+    } finally {
+      setOcrProgress(null);
+    }
+
+    // 2. Submit to backend API
     const formData = new FormData();
     formData.append('file', file);
+    if (extractedText) {
+      formData.append('extractedText', extractedText);
+    }
 
     try {
       const res = await axios.post(`${API_URL}/ai/prescription`, formData, {
@@ -68,6 +98,7 @@ export const PrescriptionUpload = () => {
       setLoading(false);
     }
   };
+
 
   // Download PDF Summary
   const handleDownloadPDF = async () => {
@@ -148,8 +179,18 @@ export const PrescriptionUpload = () => {
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <Loader size="large" color="secondary" />
             <p className="mt-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Running Clinical AI OCR Parser...
+              {ocrProgress !== null 
+                ? `Extracting text from prescription: ${ocrProgress}%` 
+                : 'Structuring dosage timeline via Groq AI...'}
             </p>
+            {ocrProgress !== null && (
+              <div className="w-48 bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                <div 
+                  className="bg-teal-500 h-full rounded-full transition-all duration-150" 
+                  style={{ width: `${ocrProgress}%` }}
+                />
+              </div>
+            )}
           </div>
         ) : result ? (
           <div className="flex-1 flex flex-col justify-between h-full space-y-6">

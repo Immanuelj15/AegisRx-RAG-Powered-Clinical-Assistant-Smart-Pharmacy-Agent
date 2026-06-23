@@ -171,5 +171,39 @@ module.exports = {
     log.timestamp = new Date();
     searchLogs.push(log);
     return log;
+  },
+
+  // Schedule methods
+  getMockSchedulesByUserId: (userId) => mockSchedules.filter(s => s.userId === userId.toString()),
+  saveMockSchedule: (schedule) => {
+    const id = schedule._id || schedule.id || `sched_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const existingIdx = mockSchedules.findIndex(s => s._id === id || s.id === id);
+    if (existingIdx !== -1) {
+      mockSchedules[existingIdx] = { ...mockSchedules[existingIdx], ...schedule };
+      return mockSchedules[existingIdx];
+    } else {
+      const newSchedule = { ...schedule, _id: id, id, dosesTaken: schedule.dosesTaken || [], createdAt: new Date() };
+      mockSchedules.push(newSchedule);
+      return newSchedule;
+    }
+  },
+
+  // Interaction methods
+  getMockInteractions: () => mockInteractions,
+  saveMockInteraction: (interaction) => {
+    const id = interaction._id || `int_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    mockInteractions.push({ ...interaction, _id: id });
   }
 };
+
+// Seeding Mock Interactions
+const mockSchedules = [];
+const mockInteractions = [
+  { drugA: 'ibuprofen', drugB: 'aspirin', severity: 'High', description: 'Both are NSAIDs. Concomitant use increases risk of gastrointestinal ulcers and bleeding.' },
+  { drugA: 'ibuprofen', drugB: 'warfarin', severity: 'High', description: 'NSAID and anticoagulant combination. Severe risk of major gastrointestinal and systemic hemorrhage.' },
+  { drugA: 'lisinopril', drugB: 'spironolactone', severity: 'Moderate', description: 'ACE inhibitor and potassium-sparing diuretic combination. High risk of developing hyperkalemia (dangerously high blood potassium levels).' },
+  { drugA: 'metformin', drugB: 'contrast dye', severity: 'High', description: 'Iodinated contrast media and Metformin. High risk of lactic acidosis. Temporarily withhold Metformin before/after imaging studies.' },
+  { drugA: 'amoxicillin', drugB: 'methotrexate', severity: 'Moderate', description: 'Penicillins reduce renal clearance of methotrexate, potentially increasing methotrexate toxicity risks.' },
+  { drugA: 'cetirizine', drugB: 'alcohol', severity: 'Moderate', description: 'Central nervous system depressant synergy. Enhances drowsiness, cognitive impairment, and psychomotor coordination deficits.' }
+];
+
