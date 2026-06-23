@@ -135,7 +135,12 @@ const getFDAData = async (req, res) => {
 
     // Call OpenFDA API
     // Search by generic name or brand name
-    const url = `https://api.fda.gov/drug/label.json?search=openfda.substance_name:"${encodeURIComponent(drugName)}"+OR+openfda.brand_name:"${encodeURIComponent(drugName)}"&limit=1`;
+    let url = `https://api.fda.gov/drug/label.json?search=openfda.substance_name:"${encodeURIComponent(drugName)}"+OR+openfda.brand_name:"${encodeURIComponent(drugName)}"&limit=1`;
+    
+    // Add API key if provided in .env to increase rate limits (240 requests/min vs 40 requests/min)
+    if (process.env.OPENFDA_API_KEY) {
+      url += `&api_key=${process.env.OPENFDA_API_KEY}`;
+    }
     
     const response = await axios.get(url);
 

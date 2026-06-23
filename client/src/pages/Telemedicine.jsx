@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { JitsiMeeting } from '@jitsi/react-sdk';
 
 export const Telemedicine = () => {
   const { user } = useAuth();
@@ -110,55 +111,43 @@ export const Telemedicine = () => {
             )}
           </AnimatePresence>
 
-          {/* Huge Main Video */}
-          <img 
-            src="/telehealth_pharmacist.png" 
-            alt="Pharmacist Feed"
-            className="w-full h-full object-cover opacity-90"
-          />
-
-          {/* Self-View Picture-in-Picture */}
-          <motion.div 
-            drag
-            dragConstraints={{ top: 20, left: 20, right: 300, bottom: 300 }}
-            className={`absolute bottom-24 right-6 w-32 md:w-48 aspect-[3/4] bg-slate-800 rounded-2xl overflow-hidden border-2 border-slate-700/50 shadow-2xl z-30 transition-opacity ${isVideoOff ? 'opacity-20' : 'opacity-100'}`}
-          >
-            {isVideoOff ? (
-              <div className="w-full h-full flex items-center justify-center bg-slate-900">
-                <FiVideoOff size={32} className="text-slate-600" />
-              </div>
-            ) : (
-              <img 
-                src="/telehealth_patient.png" 
-                alt="Self View"
-                className="w-full h-full object-cover transform -scale-x-100" 
+          {callState === 'active' && (
+            <div className="w-full h-full bg-slate-900 absolute inset-0 z-20">
+              <JitsiMeeting
+                domain="meet.jit.si"
+                roomName="AegisRx-Secure-Clinic-Consultation"
+                configOverwrite={{
+                  startWithAudioMuted: false,
+                  startWithVideoMuted: false,
+                  disableModeratorIndicator: true,
+                  prejoinPageEnabled: false // Skip their native prejoin page since we have our waiting room
+                }}
+                interfaceConfigOverwrite={{
+                  DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+                  SHOW_PROMOTIONAL_CLOSE_PAGE: false,
+                  TOOLBAR_BUTTONS: [
+                    'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
+                    'fodeviceselection', 'hangup', 'profile', 'chat', 'settings',
+                    'videoquality', 'filmstrip', 'shortcuts', 'tileview'
+                  ]
+                }}
+                userInfo={{
+                  displayName: user?.name || (user?.role === 'Pharmacist' ? 'Dr. AegisRx' : 'AegisRx Patient')
+                }}
+                onApiReady={(externalApi) => {
+                  // When the user clicks the red hangup button inside Jitsi
+                  externalApi.addListener('videoConferenceLeft', () => {
+                    handleEndCall();
+                  });
+                }}
+                getIFrameRef={(iframeRef) => {
+                  iframeRef.style.height = '100%';
+                  iframeRef.style.width = '100%';
+                  iframeRef.style.border = 'none';
+                }}
               />
-            )}
-          </motion.div>
-        </div>
-
-        {/* Bottom Control Bar */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent z-20 flex justify-center items-center space-x-6">
-          <button 
-            onClick={() => setIsMuted(!isMuted)}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMuted ? 'bg-red-500 text-white' : 'bg-slate-700/80 text-white hover:bg-slate-600/80'}`}
-          >
-            {isMuted ? <FiMicOff size={20} /> : <FiMic size={20} />}
-          </button>
-          
-          <button 
-            onClick={handleEndCall}
-            className="w-16 h-16 rounded-3xl bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-transform hover:scale-105"
-          >
-            <FiPhoneMissed size={24} style={{ transform: 'rotate(135deg)' }} />
-          </button>
-
-          <button 
-            onClick={() => setIsVideoOff(!isVideoOff)}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isVideoOff ? 'bg-red-500 text-white' : 'bg-slate-700/80 text-white hover:bg-slate-600/80'}`}
-          >
-            {isVideoOff ? <FiVideoOff size={20} /> : <FiVideo size={20} />}
-          </button>
+            </div>
+          )}
         </div>
       </div>
 
