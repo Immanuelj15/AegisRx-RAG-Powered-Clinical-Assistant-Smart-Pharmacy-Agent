@@ -10,7 +10,10 @@ import {
   FiLayers, 
   FiFileText,
   FiX,
-  FiCalendar
+  FiCalendar,
+  FiActivity,
+  FiHeart,
+  FiSliders
 } from 'react-icons/fi';
 
 export const Sidebar = ({ isOpen, onClose }) => {
@@ -77,6 +80,27 @@ export const Sidebar = ({ isOpen, onClose }) => {
       path: '/profile',
       icon: <FiFileText size={18} />,
       roles: ['Patient', 'Pharmacist', 'Admin']
+    },
+    {
+      name: 'Symptom Checker',
+      path: '/symptom-checker',
+      icon: <FiActivity size={18} />,
+      roles: ['Patient', 'Pharmacist', 'Admin'],
+      badge: 'AI'
+    },
+    {
+      name: 'Dosage Calculator',
+      path: '/dosage-calc',
+      icon: <FiSliders size={18} />,
+      roles: ['Patient', 'Pharmacist', 'Admin'],
+      badge: 'AI'
+    },
+    {
+      name: 'Health Report',
+      path: '/health-report',
+      icon: <FiHeart size={18} />,
+      roles: ['Patient', 'Pharmacist', 'Admin'],
+      badge: 'PDF'
     }
   ];
 
@@ -124,7 +148,12 @@ export const Sidebar = ({ isOpen, onClose }) => {
               className={linkClass}
             >
               {item.icon}
-              <span className="text-sm font-semibold">{item.name}</span>
+              <span className="text-sm font-semibold flex-1">{item.name}</span>
+              {item.badge && (
+                <span className="text-[8px] bg-primary-500 text-white px-1.5 py-0.5 rounded font-black uppercase">
+                  {item.badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

@@ -506,5 +506,171 @@ module.exports = {
   exportProcurementPO,
   matchClinicalTrials,
   auditFdaRecall,
-  researchMedicine
+  researchMedicine,
+  symptomCheck,
+  generateHealthReport,
+  dosageCalculator
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Symptom Checker → Triage AI
+// @route   POST /api/ai/symptom-check
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function symptomCheck(req, res) {
+  try {
+    const { symptoms, age, gender } = req.body;
+    if (!symptoms || !Array.isArray(symptoms) || symptoms.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one symptom is required' });
+    }
+
+    console.log(`Symptom triage requested for: ${symptoms.join(', ')}`);
+
+    const systemPrompt = `You are an expert clinical triage AI embedded in a hospital pharmacy system.
+Analyze the patient's reported symptoms and return ONLY valid JSON — no markdown fences, no extra text — matching this exact schema:
+{
+  "urgencyLevel": "ER" | "GP" | "Self-Care",
+  "urgencyColor": "red" | "amber" | "green",
+  "urgencyReason": "1 sentence explaining why this urgency level was chosen",
+  "likelyConditions": [
+    { "name": "string", "confidence": "High|Medium|Low", "description": "1 sentence" }
+  ],
+  "redFlags": ["string"],
+  "recommendedOTC": [
+    { "medicine": "string", "forSymptom": "string", "note": "string" }
+  ],
+  "immediateActions": ["string"],
+  "disclaimer": "Always consult a licensed physician for a proper clinical diagnosis."
+}
+Provide 2-4 likely conditions, 0-3 OTC recommendations (only for Self-Care urgency), and 2-5 red flags.
+Be conservative — when in doubt, escalate to GP or ER.`;
+
+    const userPrompt = `Patient symptoms: ${symptoms.join(', ')}
+Patient age: ${age || 'Unknown'}
+Patient gender: ${gender || 'Unknown'}
+Perform clinical triage and return the JSON schema.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.2);
+
+    let triage;
+    try {
+      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      triage = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.warn('Triage JSON parse failed, returning raw:', parseErr.message);
+      triage = { raw };
+    }
+
+    res.status(200).json({ success: true, symptoms, triage });
+  } catch (error) {
+    console.error('Symptom check error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Patient Health Report PDF Generator
+// @route   POST /api/ai/health-report
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function generateHealthReport(req, res) {
+  try {
+    const { patientData, medications, allergies, upcomingDoses } = req.body;
+    if (!patientData) {
+      return res.status(400).json({ success: false, error: 'Patient data is required' });
+    }
+
+    console.log(`Generating health report for: ${patientData.name}`);
+
+    // Ask Groq to generate an AI clinical narrative summary
+    const systemPrompt = `You are a senior clinical pharmacist writing a structured patient medication summary report. 
+Write 3-4 concise professional sentences summarizing the patient's current medication status, notable risks, and recommendations.
+Do not use markdown, headers, or bullet points — plain prose only.`;
+
+    const userPrompt = `Patient: ${patientData.name}, Age: ${patientData.age || 'N/A'}, Gender: ${patientData.gender || 'N/A'}
+Medical History / Conditions: ${patientData.medicalHistory || 'None documented'}
+Current Medications: ${medications && medications.length > 0 ? medications.map(m => m.medicineName || m.Medicine_Name).join(', ') : 'None'}
+Known Allergies: ${allergies || 'None documented'}
+Write the clinical summary narrative.`;
+
+    let narrative = 'No AI narrative generated — clinical summary based on patient records only.';
+    try {
+      narrative = await groqService.getCompletion(systemPrompt, userPrompt, 0.3);
+    } catch (groqErr) {
+      console.warn('Groq narrative generation failed:', groqErr.message);
+    }
+
+    // Generate and stream PDF
+    const pdfGenerator = require('../utils/pdfGenerator');
+    pdfGenerator.generateHealthReportPDF(res, {
+      patientData,
+      medications: medications || [],
+      allergies: allergies || 'None documented',
+      upcomingDoses: upcomingDoses || [],
+      narrative
+    });
+  } catch (error) {
+    console.error('Health report generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Dosage Calculator by Weight/Age/Renal Function
+// @route   POST /api/ai/dosage-calc
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function dosageCalculator(req, res) {
+  try {
+    const { medicineName, weightKg, ageYears, renalFunction, indication } = req.body;
+    if (!medicineName || !weightKg || !ageYears) {
+      return res.status(400).json({ success: false, error: 'Medicine name, weight, and age are required' });
+    }
+
+    console.log(`Dosage calc: ${medicineName} for ${weightKg}kg, age ${ageYears}, renal: ${renalFunction}`);
+
+    const systemPrompt = `You are a clinical pharmacist specializing in individualised dosing.
+Calculate the safe and recommended dosage for the given patient parameters.
+Return ONLY valid JSON — no markdown fences, no extra text — matching this exact schema:
+{
+  "medicineName": "string",
+  "patientCategory": "Adult" | "Pediatric" | "Geriatric",
+  "recommendedDose": "string (e.g., 500 mg)",
+  "frequency": "string (e.g., Every 8 hours)",
+  "route": "string (e.g., Oral)",
+  "maxDailyDose": "string",
+  "dosePerKg": "string or null",
+  "renalAdjustment": "string description or 'No adjustment required'",
+  "hepaticNote": "string",
+  "durationNote": "string",
+  "warnings": ["string"],
+  "contraindications": ["string"],
+  "monitoringParameters": ["string"]
+}
+Be evidence-based and conservative. Include 2-4 warnings and monitoring parameters.`;
+
+    const userPrompt = `Medicine: ${medicineName}
+Patient weight: ${weightKg} kg
+Patient age: ${ageYears} years
+Renal function: ${renalFunction || 'Normal (eGFR > 60 mL/min)'}
+Clinical indication: ${indication || 'General use'}
+Calculate the appropriate dosage and return the JSON schema.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.2);
+
+    let dosing;
+    try {
+      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      dosing = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.warn('Dosage JSON parse failed:', parseErr.message);
+      dosing = { raw };
+    }
+
+    res.status(200).json({ success: true, dosing });
+  } catch (error) {
+    console.error('Dosage calculator error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+

@@ -24,6 +24,9 @@ import { Profile } from './pages/Profile';
 import { PillCalendar } from './pages/PillCalendar';
 import { PrescriptionWriter } from './pages/PrescriptionWriter';
 import { NotFound } from './pages/NotFound';
+import { SymptomChecker } from './pages/SymptomChecker';
+import { HealthReport } from './pages/HealthReport';
+import { DosageCalculator } from './pages/DosageCalculator';
 
 function App() {
   return (
@@ -57,6 +60,9 @@ function App() {
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/symptom-checker" element={<SymptomChecker />} />
+              <Route path="/health-report" element={<HealthReport />} />
+              <Route path="/dosage-calc" element={<DosageCalculator />} />
             </Route>
 
             {/* 404 Route */}

@@ -13,7 +13,10 @@ const {
   exportProcurementPO,
   matchClinicalTrials,
   auditFdaRecall,
-  researchMedicine
+  researchMedicine,
+  symptomCheck,
+  generateHealthReport,
+  dosageCalculator
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -71,5 +74,10 @@ router.post('/export-po-pdf', protect, exportProcurementPO);
 router.get('/trials/:condition', protect, matchClinicalTrials);
 router.get('/fda-audit/:name', protect, auditFdaRecall);
 router.get('/research/:name', protect, researchMedicine);
+
+// Clinical AI Tools
+router.post('/symptom-check', protect, symptomCheck);
+router.post('/health-report', protect, generateHealthReport);
+router.post('/dosage-calc', protect, dosageCalculator);
 
 module.exports = router;

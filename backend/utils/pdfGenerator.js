@@ -343,6 +343,157 @@ module.exports = {
   generateChatPDF,
   generatePrescriptionPDF,
   generateSignedPrescriptionPDF,
-  generatePoPDF
+  generatePoPDF,
+  generateHealthReportPDF
 };
+
+/**
+ * Generate a Patient Health Summary Report PDF
+ */
+function generateHealthReportPDF(res, data) {
+  const doc = new PDFDocument({ margin: 50, bufferPages: true });
+  const { patientData, medications, allergies, upcomingDoses, narrative } = data;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="health-report-${Date.now()}.pdf"`);
+  doc.pipe(res);
+
+  // ── Header Banner ──────────────────────────────────────────────
+  doc.rect(0, 0, doc.page.width, 105).fill('#0F172A');
+  doc.rect(0, 95, doc.page.width, 10).fill('#2563EB');
+
+  doc.fillColor('#FFFFFF')
+     .fontSize(20)
+     .font('Helvetica-Bold')
+     .text('AEGISRX — PATIENT HEALTH SUMMARY REPORT', 50, 28);
+
+  doc.fontSize(9)
+     .font('Helvetica')
+     .text(`Generated: ${new Date().toLocaleString()}`, 50, 58)
+     .text(`Report ID: PHR-${Date.now().toString().slice(-8)}`, 50, 72);
+
+  // ── Patient Demographics Block ─────────────────────────────────
+  doc.moveDown(4.5);
+  const demoY = doc.y;
+
+  doc.rect(50, demoY, doc.page.width - 100, 70).fill('#F8FAFC').stroke('#E2E8F0');
+
+  doc.fillColor('#1E293B')
+     .fontSize(10)
+     .font('Helvetica-Bold')
+     .text('PATIENT DEMOGRAPHICS', 62, demoY + 10);
+
+  doc.fontSize(9).font('Helvetica').fillColor('#334155')
+     .text(`Name: ${patientData.name || 'N/A'}`, 62, demoY + 27)
+     .text(`Age: ${patientData.age || 'N/A'} yrs`, 200, demoY + 27)
+     .text(`Gender: ${patientData.gender || 'N/A'}`, 300, demoY + 27)
+     .text(`Role: ${patientData.role || 'Patient'}`, 400, demoY + 27)
+     .text(`Medical History: ${(patientData.medicalHistory || 'None documented').substring(0, 80)}`, 62, demoY + 44)
+     .text(`Documented Allergies: ${allergies || 'None'}`, 62, demoY + 58);
+
+  // ── AI Clinical Narrative ──────────────────────────────────────
+  doc.moveDown(5.5);
+
+  doc.fillColor('#2563EB')
+     .fontSize(11)
+     .font('Helvetica-Bold')
+     .text('AI CLINICAL SUMMARY', 50, doc.y);
+
+  doc.moveTo(50, doc.y + 2).lineTo(doc.page.width - 50, doc.y + 2).strokeColor('#BFDBFE').stroke();
+  doc.moveDown(0.8);
+
+  doc.fillColor('#1E40AF')
+     .fontSize(9.5)
+     .font('Helvetica-Oblique')
+     .text(narrative || 'No narrative available.', 50, doc.y, {
+       width: doc.page.width - 100,
+       align: 'justify',
+       lineGap: 3
+     });
+
+  doc.moveDown(1.5);
+
+  // ── Medications Table ──────────────────────────────────────────
+  doc.fillColor('#1E293B')
+     .fontSize(11)
+     .font('Helvetica-Bold')
+     .text('CURRENT MEDICATIONS', 50, doc.y);
+
+  doc.moveTo(50, doc.y + 2).lineTo(doc.page.width - 50, doc.y + 2).strokeColor('#E2E8F0').stroke();
+  doc.moveDown(0.8);
+
+  if (medications && medications.length > 0) {
+    let tblY = doc.y;
+    // Header row
+    doc.rect(50, tblY, doc.page.width - 100, 16).fill('#1E293B');
+    doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold')
+       .text('Medicine', 56, tblY + 4)
+       .text('Strength', 190, tblY + 4)
+       .text('Schedule', 270, tblY + 4)
+       .text('Food', 370, tblY + 4)
+       .text('Duration', 435, tblY + 4);
+
+    tblY += 18;
+    doc.font('Helvetica').fontSize(8.5).fillColor('#334155');
+
+    medications.forEach((med, idx) => {
+      if (tblY > doc.page.height - 120) { doc.addPage(); tblY = 60; }
+      const rowBg = idx % 2 === 0 ? '#F8FAFC' : '#FFFFFF';
+      doc.rect(50, tblY, doc.page.width - 100, 15).fill(rowBg);
+
+      const schedArr = [];
+      if (med.frequency?.morning) schedArr.push('Morning');
+      if (med.frequency?.afternoon) schedArr.push('Afternoon');
+      if (med.frequency?.night) schedArr.push('Night');
+
+      doc.fillColor('#334155')
+         .text(med.medicineName || med.Medicine_Name || 'N/A', 56, tblY + 3)
+         .text(med.strength || med.Strength || '-', 190, tblY + 3)
+         .text(schedArr.join(' / ') || '-', 270, tblY + 3)
+         .text(med.foodRelation || '-', 370, tblY + 3)
+         .text(med.durationDays ? `${med.durationDays}d` : '-', 435, tblY + 3);
+
+      tblY += 15;
+    });
+
+    doc.y = tblY + 10;
+  } else {
+    doc.fillColor('#94A3B8').fontSize(9).font('Helvetica-Oblique')
+       .text('No active medications on record.', 56, doc.y);
+    doc.moveDown(1);
+  }
+
+  // ── Upcoming Doses ─────────────────────────────────────────────
+  if (upcomingDoses && upcomingDoses.length > 0) {
+    doc.moveDown(1);
+    doc.fillColor('#1E293B').fontSize(11).font('Helvetica-Bold')
+       .text('UPCOMING DOSES (NEXT 24 HRS)', 50, doc.y);
+    doc.moveTo(50, doc.y + 2).lineTo(doc.page.width - 50, doc.y + 2).strokeColor('#E2E8F0').stroke();
+    doc.moveDown(0.6);
+
+    upcomingDoses.slice(0, 6).forEach(dose => {
+      doc.fillColor('#334155').fontSize(9).font('Helvetica')
+         .text(`• ${dose.time || 'N/A'} — ${dose.medicine || 'N/A'} ${dose.strength || ''}`, 58, doc.y, {
+           lineGap: 2
+         });
+      doc.moveDown(0.3);
+    });
+  }
+
+  // ── Footer on all pages ────────────────────────────────────────
+  const range = doc.bufferedPageRange();
+  for (let i = 0; i < range.count; i++) {
+    doc.switchToPage(i);
+    doc.rect(0, doc.page.height - 44, doc.page.width, 44).fill('#0F172A');
+    doc.fillColor('#94A3B8').fontSize(7.5).font('Helvetica')
+       .text(
+         '⚕  DISCLAIMER: This report is AI-assisted and generated by AegisRx for informational purposes only. It does NOT replace professional medical advice, diagnosis, or treatment. Always consult a licensed physician.',
+         50, doc.page.height - 34,
+         { align: 'center', width: doc.page.width - 100 }
+       );
+  }
+
+  doc.end();
+}
+
 

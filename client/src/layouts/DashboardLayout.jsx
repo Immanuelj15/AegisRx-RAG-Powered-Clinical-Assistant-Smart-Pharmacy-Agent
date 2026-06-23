@@ -37,6 +37,9 @@ export const DashboardLayout = () => {
     if (pathname.includes('/inventory')) return 'Medicine Catalog Management';
     if (pathname.includes('/admin')) return 'Administration & Analytics Panel';
     if (pathname.includes('/profile')) return 'Update Clinical Profile';
+    if (pathname.includes('/symptom-checker')) return 'AI Symptom Triage & Checker';
+    if (pathname.includes('/health-report')) return 'Patient Health Report Generator';
+    if (pathname.includes('/dosage-calc')) return 'Clinical Dosage Calculator';
     return 'AegisRx Portal';
   };
 
