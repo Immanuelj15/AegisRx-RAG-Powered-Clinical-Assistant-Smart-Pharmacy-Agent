@@ -39,6 +39,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     {
       label: 'Clinical Tools',
       items: [
+        { name: 'Interaction Matrix', path: '/interaction-matrix', icon: <FiActivity size={18} />, roles: ['Pharmacist','Admin'], badge: 'AI' },
         { name: 'Prescription Analyzer', path: '/prescription', icon: <FiUploadCloud size={18} />, roles: ['Pharmacist'] },
         { name: 'Dosage Calculator', path: '/dosage-calc', icon: <FiSliders size={18} />, roles: ['Pharmacist'], badge: 'AI' },
         { name: 'Prescription Writer', path: '/prescription-writer', icon: <FiFileText size={18} />, roles: ['Pharmacist','Admin'] },

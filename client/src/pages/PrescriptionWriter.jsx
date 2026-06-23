@@ -10,7 +10,8 @@ import {
   FiCheckCircle,
   FiPenTool
 } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiAlertOctagon } from 'react-icons/fi';
 
 export const PrescriptionWriter = () => {
   const [patientName, setPatientName] = useState('John Patient');
@@ -26,7 +27,11 @@ export const PrescriptionWriter = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureData, setSignatureData] = useState('');
   
+  const [liveWarnings, setLiveWarnings] = useState([]);
+  const [isCheckingInteractions, setIsCheckingInteractions] = useState(false);
+
   const canvasRef = useRef(null);
+  const checkTimeoutRef = useRef(null);
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -44,6 +49,42 @@ export const PrescriptionWriter = () => {
     };
     fetchCatalog();
   }, []);
+
+  // Live Interaction Checker
+  useEffect(() => {
+    const checkLiveInteractions = async () => {
+      const activeDrugs = prescribedItems
+        .map(item => item.medicineName?.trim())
+        .filter(name => name && name.length > 2);
+
+      // Only check if we have 2 or more distinct drugs
+      const uniqueDrugs = [...new Set(activeDrugs)];
+      
+      if (uniqueDrugs.length < 2) {
+        setLiveWarnings([]);
+        return;
+      }
+
+      setIsCheckingInteractions(true);
+      try {
+        const res = await axios.post(`${API_URL}/ai/check-interactions`, { drugs: uniqueDrugs }, config);
+        if (res.data.success) {
+          // Filter only severe warnings for the live banner to avoid annoying the doctor
+          const severe = res.data.interactions.filter(ix => ix.severity?.toLowerCase() === 'severe');
+          setLiveWarnings(severe);
+        }
+      } catch (err) {
+        console.error('Failed to check live interactions:', err);
+      } finally {
+        setIsCheckingInteractions(false);
+      }
+    };
+
+    if (checkTimeoutRef.current) clearTimeout(checkTimeoutRef.current);
+    checkTimeoutRef.current = setTimeout(checkLiveInteractions, 1500); // Debounce 1.5s
+
+    return () => clearTimeout(checkTimeoutRef.current);
+  }, [prescribedItems]);
 
   // HTML5 Canvas signature pad listeners
   const startDrawing = (e) => {
@@ -190,6 +231,27 @@ export const PrescriptionWriter = () => {
           </p>
         </div>
       </div>
+
+      <AnimatePresence>
+        {liveWarnings.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="p-4 rounded-2xl bg-red-500/10 border-2 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse-slow"
+          >
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 font-black mb-2">
+              <FiAlertOctagon size={20} className="animate-bounce" />
+              <span>SEVERE DRUG INTERACTION DETECTED</span>
+            </div>
+            <div className="space-y-2">
+              {liveWarnings.map((warn, i) => (
+                <div key={i} className="text-sm font-semibold text-red-700 dark:text-red-300">
+                  <span className="underline decoration-red-400 decoration-2">{warn.drug1} + {warn.drug2}</span>: {warn.reason}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <form onSubmit={handleSaveAndExport} className="grid lg:grid-cols-3 gap-6 text-xs">
         {/* Prescription Details Card */}

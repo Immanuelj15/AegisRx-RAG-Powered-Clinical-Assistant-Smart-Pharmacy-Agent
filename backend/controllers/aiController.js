@@ -509,7 +509,8 @@ module.exports = {
   researchMedicine,
   symptomCheck,
   generateHealthReport,
-  dosageCalculator
+  dosageCalculator,
+  checkInteractions
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -674,3 +675,46 @@ Calculate the appropriate dosage and return the JSON schema.`;
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Drug-Drug Interaction Matrix API
+// @route   POST /api/ai/check-interactions
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function checkInteractions(req, res) {
+  try {
+    const { drugs } = req.body;
+    if (!drugs || !Array.isArray(drugs) || drugs.length < 2) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of at least 2 drugs.' });
+    }
+
+    if (drugs.length > 5) {
+      return res.status(400).json({ success: false, error: 'Maximum 5 drugs allowed per interaction check.' });
+    }
+
+    const systemPrompt = `You are an expert clinical pharmacologist and FDA safety AI. 
+Analyze the potential drug-drug interactions between the following medications: ${drugs.join(', ')}.
+For EVERY unique pair of drugs in the list, evaluate the interaction severity.
+Output MUST be a strict JSON array of objects. 
+Format: 
+[
+  { "drug1": "Name", "drug2": "Name", "severity": "Safe" | "Moderate" | "Severe", "reason": "Short clinical reason" }
+]
+Do not include markdown blocks, just the JSON array.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, "Analyze the drug list provided.", 0.1);
+    
+    let interactions = [];
+    try {
+      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      interactions = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error('Interaction JSON parse failed:', parseErr.message);
+      return res.status(500).json({ success: false, error: 'Failed to parse AI interaction data.' });
+    }
+
+    res.status(200).json({ success: true, interactions });
+  } catch (error) {
+    console.error('Check Interactions Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
