@@ -10,14 +10,18 @@ import {
   FiCoffee, 
   FiRefreshCw 
 } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader } from '../components/Loader';
+import { FiTarget, FiStar, FiAward } from 'react-icons/fi';
 
 export const PillCalendar = () => {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notificationPermission, setNotificationPermission] = useState('default');
+  
+  const [showReward, setShowReward] = useState(false);
+  const [points, setPoints] = useState(0);
 
   const token = localStorage.getItem('token');
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -82,6 +86,13 @@ export const PillCalendar = () => {
     } catch (err) {
       console.error('Failed to log dose:', err);
     }
+
+    // Trigger Gamification Reward if marking as taken
+    if (!currentVal) {
+      setShowReward(true);
+      setPoints(prev => prev + 10);
+      setTimeout(() => setShowReward(false), 2500);
+    }
   };
 
   // Request Refill
@@ -133,8 +144,51 @@ export const PillCalendar = () => {
   const daysToShow = getDaysArray();
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // --- GAMIFICATION CALCULATIONS ---
+  const calculateTodayAdherence = () => {
+    let totalExpected = 0;
+    let totalTaken = 0;
+
+    schedules.forEach(sched => {
+      ['morning', 'afternoon', 'night'].forEach(slot => {
+        if (sched.frequency[slot]) {
+          totalExpected++;
+          const takenObj = sched.takenDates.find(td => td.date.startsWith(todayStr) && td.timeSlot === slot);
+          if (takenObj && takenObj.isTaken) {
+            totalTaken++;
+          }
+        }
+      });
+    });
+
+    if (totalExpected === 0) return 100;
+    return Math.round((totalTaken / totalExpected) * 100);
+  };
+
+  const adherenceScore = calculateTodayAdherence();
+  const radius = 30;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (adherenceScore / 100) * circumference;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Gamification Reward Overlay */}
+      <AnimatePresence>
+        {showReward && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.5, y: 50 }} 
+            animate={{ opacity: 1, scale: 1, y: 0 }} 
+            exit={{ opacity: 0, scale: 1.5, filter: "blur(10px)" }}
+            className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center"
+          >
+            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 p-8 rounded-full shadow-[0_0_50px_rgba(250,204,21,0.6)] flex flex-col items-center">
+              <FiStar size={48} className="text-white animate-spin-slow mb-2" />
+              <span className="text-white font-black text-2xl tracking-widest uppercase">Excellent!</span>
+              <span className="text-yellow-100 font-bold text-lg">+10 Adherence Points</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center glass-card p-6 gap-4">
         <div>
@@ -183,8 +237,49 @@ export const PillCalendar = () => {
         </div>
       ) : (
         <div className="grid lg:grid-cols-3 gap-6">
+          
+          {/* Gamification Sidebar */}
+          <div className="lg:col-span-1 space-y-6 order-2 lg:order-1">
+            <div className="glass-card p-6 flex flex-col items-center text-center space-y-4">
+              <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <FiTarget className="text-indigo-500" />
+                <span>Today's Adherence</span>
+              </h3>
+              
+              <div className="relative w-32 h-32 flex items-center justify-center">
+                {/* SVG Progress Ring */}
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="64" cy="64" r="30" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-slate-100 dark:text-slate-800" />
+                  <motion.circle 
+                    cx="64" cy="64" r="30" 
+                    stroke="currentColor" 
+                    strokeWidth="6" 
+                    fill="transparent" 
+                    strokeDasharray={circumference}
+                    initial={{ strokeDashoffset: circumference }}
+                    animate={{ strokeDashoffset }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className={`${adherenceScore === 100 ? 'text-green-500' : adherenceScore > 50 ? 'text-orange-500' : 'text-red-500'} drop-shadow-md`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-slate-800 dark:text-slate-100">{adherenceScore}%</span>
+                </div>
+              </div>
+
+              <div className="bg-indigo-50 dark:bg-indigo-950/20 px-4 py-3 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 w-full flex justify-between items-center">
+                <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+                  <FiAward size={18} />
+                  <span className="font-bold text-sm">Total Points</span>
+                </div>
+                <span className="font-black text-lg text-indigo-800 dark:text-indigo-300">{points}</span>
+              </div>
+            </div>
+          </div>
+
           {/* Calendar timeline sheet */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 order-1 lg:order-2">
             {/* Timeline header */}
             <div className="grid grid-cols-7 gap-2 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 p-3 rounded-2xl shadow-sm text-center">
               {daysToShow.map((day, idx) => {

@@ -510,7 +510,8 @@ module.exports = {
   symptomCheck,
   generateHealthReport,
   dosageCalculator,
-  checkInteractions
+  checkInteractions,
+  generateDietPlan
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -715,6 +716,59 @@ Do not include markdown blocks, just the JSON array.`;
     res.status(200).json({ success: true, interactions });
   } catch (error) {
     console.error('Check Interactions Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    AI Diet & Lifestyle Planner (Drug-Food Interactions)
+// @route   POST /api/ai/diet-plan
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function generateDietPlan(req, res) {
+  try {
+    const { conditions, medications } = req.body;
+    
+    if (!conditions || !medications) {
+      return res.status(400).json({ success: false, error: 'Conditions and medications are required.' });
+    }
+
+    const systemPrompt = `You are a clinical dietitian and FDA-compliance AI. 
+Generate a strict 7-day meal plan and lifestyle guide for a patient with the following profile:
+Diagnosed Conditions: ${conditions.join(', ')}
+Current Medications: ${medications.join(', ')}
+
+CRITICAL INSTRUCTION: You MUST explicitly avoid and warn against any foods that have known drug-food interactions with their specific medications (e.g., Grapefruit for statins, high Vitamin K for Warfarin).
+
+Output MUST be a valid JSON object matching this exact schema, NO MARKDOWN, JUST JSON:
+{
+  "drugFoodWarnings": [ "List of foods to absolutely avoid and why" ],
+  "recommendedFoods": [ "List of beneficial foods for their conditions" ],
+  "weeklyPlan": [
+    {
+      "day": "Monday",
+      "breakfast": "Meal description",
+      "lunch": "Meal description",
+      "dinner": "Meal description",
+      "snack": "Meal description"
+    } // ... all 7 days
+  ]
+}`;
+
+    const raw = await groqService.getCompletion(systemPrompt, "Generate the dietary plan.", 0.2);
+    
+    let dietPlan = {};
+    try {
+      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      dietPlan = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error('Diet Plan JSON parse failed:', parseErr.message);
+      return res.status(500).json({ success: false, error: 'Failed to parse AI diet plan data.' });
+    }
+
+    res.status(200).json({ success: true, dietPlan });
+  } catch (error) {
+    console.error('Diet Planner Error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 }

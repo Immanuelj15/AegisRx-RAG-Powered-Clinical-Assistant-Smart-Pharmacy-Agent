@@ -17,7 +17,8 @@ const {
   symptomCheck,
   generateHealthReport,
   dosageCalculator,
-  checkInteractions
+  checkInteractions,
+  generateDietPlan
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -80,6 +81,9 @@ router.get('/research/:name', protect, researchMedicine);
 router.post('/symptom-check', protect, symptomCheck);
 router.post('/health-report', protect, generateHealthReport);
 router.post('/dosage-calc', protect, dosageCalculator);
+
+// @route   POST /api/ai/diet-plan
+router.post('/diet-plan', protect, generateDietPlan);
 
 // @route   POST /api/ai/check-interactions
 router.post('/check-interactions', protect, checkInteractions);

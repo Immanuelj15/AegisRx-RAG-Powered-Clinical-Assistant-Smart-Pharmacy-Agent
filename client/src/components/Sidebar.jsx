@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   FiGrid, FiSearch, FiMessageSquare, FiUploadCloud, FiUsers, 
   FiLayers, FiFileText, FiX, FiCalendar, FiActivity, FiHeart, FiSliders,
-  FiLogOut
+  FiLogOut, FiCoffee
 } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 
@@ -32,6 +32,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       label: 'Patient Care',
       items: [
         { name: 'Symptom Checker', path: '/symptom-checker', icon: <FiActivity size={18} />, roles: ['Patient'], badge: 'AI' },
+        { name: 'Diet & Lifestyle', path: '/diet-plan', icon: <FiCoffee size={18} />, roles: ['Patient'], badge: 'AI' },
         { name: 'Pill Calendar', path: '/calendar', icon: <FiCalendar size={18} />, roles: ['Patient'] },
         { name: 'Health Report', path: '/health-report', icon: <FiHeart size={18} />, roles: ['Patient'], badge: 'PDF' },
       ]

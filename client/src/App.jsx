@@ -28,6 +28,7 @@ import { SymptomChecker } from './pages/SymptomChecker';
 import { HealthReport } from './pages/HealthReport';
 import { DosageCalculator } from './pages/DosageCalculator';
 import { InteractionMatrix } from './pages/InteractionMatrix';
+import { DietPlanner } from './pages/DietPlanner';
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
               <Route path="/health-report" element={<HealthReport />} />
               <Route path="/dosage-calc" element={<DosageCalculator />} />
               <Route path="/interaction-matrix" element={<InteractionMatrix />} />
+              <Route path="/diet-plan" element={<DietPlanner />} />
             </Route>
 
             {/* 404 Route */}
