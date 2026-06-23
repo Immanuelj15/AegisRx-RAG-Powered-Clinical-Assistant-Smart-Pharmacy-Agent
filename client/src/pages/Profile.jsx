@@ -45,7 +45,7 @@ export const Profile = () => {
         Clinical Profile Settings
       </h3>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-        Update your personal details and history parameters to help the AI MedAssist RAG pipeline tailor its medical advisory suggestions.
+        Update your personal details and history parameters to help the AegisRx RAG pipeline tailor its medical advisory suggestions.
       </p>
 
       {message && (

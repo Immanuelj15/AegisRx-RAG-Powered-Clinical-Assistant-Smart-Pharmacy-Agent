@@ -61,7 +61,7 @@ const chatAgent = async (req, res) => {
     }
 
     // 3. Build prompts for Groq
-    const systemPrompt = `You are AI MedAssist, a professional full-stack medical chatbot assisting patients, hospital staff, and pharmacists. 
+    const systemPrompt = `You are AegisRx, a professional full-stack medical chatbot assisting patients, hospital staff, and pharmacists. 
 You answer questions accurately, warning-first, and clearly based on local hospital medicine databases.
 
 Available Catalog Context from RAG similarity search:

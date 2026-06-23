@@ -1,6 +1,6 @@
-# AI MedAssist - Smart Hospital & Pharmacy AI Agent
+# AegisRx - RAG-Powered Clinical Assistant & Smart Pharmacy Agent
 
-AI MedAssist is a production-ready, full-stack AI Medical Prescription Guidance and stock search system. It utilizes a **Retrieval-Augmented Generation (RAG)** pipeline to query local clinical inventory lists, suggest substitutes for out-of-stock items, extract dosage schedules from prescription image scans, and conduct structured consultations.
+AegisRx is a production-ready, full-stack AI Medical Prescription Guidance and stock search system. It utilizes a **Retrieval-Augmented Generation (RAG)** pipeline to query local clinical inventory lists, suggest substitutes for out-of-stock items, extract dosage schedules from prescription image scans, and conduct structured consultations.
 
 ---
 
@@ -79,7 +79,7 @@ npm run install:all
 Create a `.env` file in the root directory:
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/ai-medassist
+MONGO_URI=mongodb://localhost:27017/aegisrx
 JWT_SECRET=secure_jwt_token_256bit
 GROQ_API_KEY=your_groq_api_key_here
 RAG_SERVICE_URL=http://127.0.0.1:5001

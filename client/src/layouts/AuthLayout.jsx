@@ -33,14 +33,14 @@ export const AuthLayout = () => {
         {/* Brand Logo */}
         <Link to="/" className="inline-flex items-center space-x-2.5 mb-4">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-primary-500/10">
-            M
+            A
           </div>
           <span className="font-extrabold text-2xl bg-gradient-to-r from-primary-600 to-secondary-500 bg-clip-text text-transparent">
-            AI MedAssist
+            AegisRx
           </span>
         </Link>
         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-          Smart Hospital & Pharmacy AI Agent
+          RAG-Powered Clinical Assistant & Smart Pharmacy Agent
         </p>
       </div>
 

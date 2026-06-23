@@ -18,7 +18,7 @@ const generateChatPDF = (res, title, messages) => {
   doc.fillColor('#FFFFFF')
      .fontSize(22)
      .font('Helvetica-Bold')
-     .text('AI MedAssist - Clinical Consultation Report', 50, 40);
+     .text('AegisRx - Clinical Consultation Report', 50, 40);
 
   // Subheader
   doc.fontSize(10)
@@ -35,7 +35,7 @@ const generateChatPDF = (res, title, messages) => {
   // Messages Loop
   messages.forEach((msg, idx) => {
     const isUser = msg.role === 'user';
-    const sender = isUser ? 'PATIENT/USER' : 'MEDASSIST CLINICAL AI';
+    const sender = isUser ? 'PATIENT/USER' : 'AEGISRX CLINICAL AI';
     const senderColor = isUser ? '#10B981' : '#2563EB';
 
     // Divider
@@ -68,7 +68,7 @@ const generateChatPDF = (res, title, messages) => {
     doc.fontSize(8)
        .fillColor('#94A3B8')
        .text(
-         'Disclaimer: AI MedAssist provides automated medical guidance based on hospital stock catalogs. Verify all medications with a physician.',
+         'Disclaimer: AegisRx provides automated medical guidance based on hospital stock catalogs. Verify all medications with a physician.',
          50,
          doc.page.height - 40,
          { align: 'center', width: doc.page.width - 100 }
@@ -95,7 +95,7 @@ const generatePrescriptionPDF = (res, analysisText) => {
   doc.fillColor('#FFFFFF')
      .fontSize(22)
      .font('Helvetica-Bold')
-     .text('AI MedAssist - Smart Prescription Summary', 50, 40);
+     .text('AegisRx - Smart Prescription Summary', 50, 40);
 
   doc.fontSize(10)
      .font('Helvetica')

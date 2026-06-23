@@ -123,7 +123,7 @@ export const AiChat = () => {
 
     try {
       const response = await axios.post(`${API_URL}/ai/export-pdf`, {
-        title: sessions.find(s => s._id === currentSessionId || s.id === currentSessionId)?.title || 'AI MedAssist consultation',
+        title: sessions.find(s => s._id === currentSessionId || s.id === currentSessionId)?.title || 'AegisRx consultation',
         messages: messages
       }, {
         responseType: 'blob' // Important to stream binaries
@@ -299,7 +299,7 @@ export const AiChat = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder={isListening ? "Listening..." : "Ask AI MedAssist about medicine stock, instructions, warnings..."}
+            placeholder={isListening ? "Listening..." : "Ask AegisRx about medicine stock, instructions, warnings..."}
             disabled={isListening}
             className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs placeholder-slate-400 dark:placeholder-slate-550 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:text-slate-100 transition-all"
           />

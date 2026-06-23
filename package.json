@@ -1,7 +1,7 @@
 {
-  "name": "ai-medassist-root",
+  "name": "aegisrx-root",
   "version": "1.0.0",
-  "description": "Smart Hospital & Pharmacy AI Agent - Root Project",
+  "description": "AegisRx - RAG-Powered Clinical Assistant & Smart Pharmacy Agent - Root Project",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

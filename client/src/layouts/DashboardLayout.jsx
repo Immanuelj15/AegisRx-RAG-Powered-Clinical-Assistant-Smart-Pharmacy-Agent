@@ -16,7 +16,7 @@ export const DashboardLayout = () => {
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
         <div className="text-center">
           <Loader size="large" />
-          <p className="mt-4 font-semibold text-slate-600 dark:text-slate-400">Loading AI MedAssist Profile...</p>
+          <p className="mt-4 font-semibold text-slate-600 dark:text-slate-400">Loading AegisRx Profile...</p>
         </div>
       </div>
     );
@@ -30,12 +30,12 @@ export const DashboardLayout = () => {
   // Map route paths to friendly Navbar titles
   const getPageTitle = (pathname) => {
     if (pathname.includes('/search')) return 'Medicine Inventory & Alternatives';
-    if (pathname.includes('/chat')) return 'AI MedAssist Consultation Chat';
-    if (pathname.includes('/prescription')) return 'AI Prescription Understander';
+    if (pathname.includes('/chat')) return 'AegisRx Consultation Chat';
+    if (pathname.includes('/prescription')) return 'AegisRx Prescription Analyzer';
     if (pathname.includes('/inventory')) return 'Medicine Catalog Management';
     if (pathname.includes('/admin')) return 'Administration & Analytics Panel';
     if (pathname.includes('/profile')) return 'Update Clinical Profile';
-    return 'MedAssist Portal';
+    return 'AegisRx Portal';
   };
 
   return (

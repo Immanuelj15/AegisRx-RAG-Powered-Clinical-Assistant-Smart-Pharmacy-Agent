@@ -86,10 +86,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200/50 dark:border-slate-800/30">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              M
+              A
             </div>
             <span className="font-extrabold text-lg bg-gradient-to-r from-primary-600 to-secondary-500 bg-clip-text text-transparent">
-              AI MedAssist
+              AegisRx
             </span>
           </div>
 

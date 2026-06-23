@@ -36,10 +36,10 @@ export const Landing = () => {
       <header className="max-w-7xl mx-auto h-20 px-6 flex items-center justify-between border-b border-slate-200/40 dark:border-slate-800/30">
         <div className="flex items-center space-x-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-500 to-secondary-400 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-            M
+            A
           </div>
           <span className="font-extrabold text-lg bg-gradient-to-r from-primary-600 to-secondary-500 bg-clip-text text-transparent">
-            AI MedAssist
+            AegisRx
           </span>
         </div>
 
@@ -151,7 +151,7 @@ export const Landing = () => {
           <div className="text-center max-w-xl mx-auto mb-16 space-y-3">
             <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">Intelligent Clinical Workflows</h2>
             <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-              AI MedAssist utilizes advanced retrieval mechanisms to parse inventory and understand pharmacology safety boundaries.
+              AegisRx utilizes advanced retrieval mechanisms to parse inventory and understand pharmacology safety boundaries.
             </p>
           </div>
 
@@ -204,7 +204,7 @@ export const Landing = () => {
         <div className="space-y-6">
           <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">Structured CSV RAG Pipeline</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            AI MedAssist maintains high diagnostic integrity by coupling large language models with a local vector database. Hospital staff upload inventory sheets which are cleaned, embedded via SentenceTransformers, and queried in real-time.
+            AegisRx maintains high diagnostic integrity by coupling large language models with a local vector database. Hospital staff upload inventory sheets which are cleaned, embedded via SentenceTransformers, and queried in real-time.
           </p>
           <div className="space-y-3">
             <div className="flex items-center space-x-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -240,7 +240,7 @@ export const Landing = () => {
       {/* Footer */}
       <footer className="border-t border-slate-200/40 dark:border-slate-800/30 py-8 bg-white dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center text-xs font-medium text-slate-400">
-          <span>© 2026 AI MedAssist Systems. All rights reserved.</span>
+          <span>© 2026 AegisRx Systems. All rights reserved.</span>
           <span className="flex space-x-4 mt-4 sm:mt-0">
             <a href="#" className="hover:underline">Privacy Policy</a>
             <a href="#" className="hover:underline">Terms of Service</a>

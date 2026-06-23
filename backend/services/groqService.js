@@ -175,18 +175,18 @@ Yes, diabetic patients can safely take standard pain relief and allergy medicati
   }
 
   // 5. Default General Conversational AI Assistant Response
-  return `### 🏥 AI MedAssist Virtual Health Agent
-
-Hello! I am your AI MedAssist Agent. I have analyzed your query based on our local clinical database.
-
+  return `### 🏥 AegisRx Virtual Health Agent
+ 
+Hello! I am your AegisRx Agent. I have analyzed your query based on our local clinical database.
+ 
 **General Guidance:**
 - For **pain and fever**, we have **Paracetamol 500mg** in stock ($2.50). **Ibuprofen 400mg** is currently out of stock.
 - For **allergies**, we have **Cetirizine 10mg** and **Loratadine 10mg** in stock.
 - For **acid reflux**, we have **Omeprazole 20mg** and **Esomeprazole 20mg** available.
-
+ 
 Please upload a prescription image to schedule your dosage, or ask me specific questions about drug stock, alternatives, side effects, and safety warnings!
-
-*Disclaimer: AI MedAssist provides guidance based on database entries. Always verify with hospital clinicians in emergency situations.*`;
+ 
+*Disclaimer: AegisRx provides guidance based on database entries. Always verify with hospital clinicians in emergency situations.*`;
 };
 
 module.exports = {
