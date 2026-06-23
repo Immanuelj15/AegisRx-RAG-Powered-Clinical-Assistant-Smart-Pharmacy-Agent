@@ -76,7 +76,7 @@ const getMedicines = async (req, res) => {
   }
 };
 
-// @desc    Search medicine using DB and RAG fallback
+// @desc    Search medicine using RxNorm API (National Library of Medicine)
 // @route   GET /api/medicine/search
 // @access  Private
 const searchMedicine = async (req, res) => {
@@ -87,114 +87,82 @@ const searchMedicine = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Search query is required' });
     }
 
-    let foundMedicine = null;
+    // Call RxNorm API
+    const response = await axios.get(`https://rxnav.nlm.nih.gov/REST/Prescribe/approximateTerm.json?term=${encodeURIComponent(query)}&maxEntries=10`);
+    
     let alternatives = [];
-    const queryLower = query.toLowerCase();
-
-    // 1. Check local catalog first
-    if (process.env.MONGO_CONNECTED === 'true') {
-      foundMedicine = await Medicine.findOne({
-        $or: [
-          { Medicine_Name: { $regex: query, $options: 'i' } },
-          { Brand: { $regex: query, $options: 'i' } },
-          { Generic_Name: { $regex: query, $options: 'i' } }
-        ]
-      });
-    } else {
-      foundMedicine = mockDb.getMockMedicines().find(m => 
-        m.Medicine_Name.toLowerCase().includes(queryLower) ||
-        m.Brand.toLowerCase().includes(queryLower) ||
-        m.Generic_Name.toLowerCase().includes(queryLower)
-      );
+    if (response.data && response.data.approximateGroup && response.data.approximateGroup.candidate) {
+      // Map candidates to our frontend structure
+      alternatives = response.data.approximateGroup.candidate.map(item => ({
+        Medicine_Name: item.name,
+        rxcui: item.rxcui,
+        score: item.score
+      }));
     }
 
-    // 2. Log searches for analytics
-    const logData = {
-      query,
-      userId: req.user ? req.user._id || req.user.id : null,
-      userRole: req.user ? req.user.role : 'Guest',
-      wasFound: !!foundMedicine,
-      medicineName: foundMedicine ? foundMedicine.Medicine_Name : '',
-      alternativesSuggested: []
-    };
-
-    // 3. Handle stock availability / alternatives suggestion
-    if (foundMedicine) {
-      if (foundMedicine.Stock === 0) {
-        // Out of stock! Suggest alternatives
-        const altName = foundMedicine.Alternative;
-        logData.alternativesSuggested.push(altName);
-        
-        // Find alternative details
-        let altDetails = null;
-        if (process.env.MONGO_CONNECTED === 'true') {
-          altDetails = await Medicine.findOne({
-            $or: [
-              { Medicine_Name: { $regex: altName, $options: 'i' } },
-              { Brand: { $regex: altName, $options: 'i' } }
-            ]
-          });
-        } else {
-          const lowerAlt = altName.toLowerCase();
-          altDetails = mockDb.getMockMedicines().find(m => 
-            m.Medicine_Name.toLowerCase().includes(lowerAlt) ||
-            m.Brand.toLowerCase().includes(lowerAlt)
-          );
-        }
-        
-        alternatives = altDetails ? [altDetails] : [{ Medicine_Name: altName, Note: 'Details not in catalog but recommended generically.' }];
-      }
-    } else {
-      // Not found in DB, query the RAG vector service to find the closest match semantically!
-      try {
-        const ragRes = await axios.post(`${RAG_SERVICE_URL}/api/rag/query`, {
-          query: query,
-          top_k: 2
-        });
-        
-        if (ragRes.data && ragRes.data.success && ragRes.data.results.length > 0) {
-          const closest = ragRes.data.results[0];
-          // If similarity score is high enough (> 0.6) assume this might be what they mean
-          if (closest.similarity > 0.6) {
-            const mappedMetadata = closest.metadata;
-            foundMedicine = {
-              Medicine_ID: mappedMetadata.medicine_id,
-              Medicine_Name: mappedMetadata.name,
-              Brand: mappedMetadata.brand,
-              Generic_Name: mappedMetadata.generic_name,
-              Strength: mappedMetadata.strength,
-              Use_Case: mappedMetadata.use_case,
-              Alternative: mappedMetadata.alternative,
-              Stock: mappedMetadata.stock,
-              Price: mappedMetadata.price,
-              Dosage: mappedMetadata.dosage,
-              Warnings: mappedMetadata.warnings,
-              SideEffects: mappedMetadata.side_effects,
-              Category: mappedMetadata.category,
-              RAG_Similarity: closest.similarity
-            };
-          }
-        }
-      } catch (err) {
-        console.warn('RAG Query Service failed in Search Controller:', err.message);
-      }
-    }
-
-    // Save search log
-    if (process.env.MONGO_CONNECTED === 'true') {
-      await SearchLog.create(logData);
-    } else {
-      mockDb.saveMockSearchLog(logData);
+    // Since RxNorm is an autocomplete API, we just return the alternatives list as "foundMedicine" if there's an exact top match, 
+    // or just return the alternatives.
+    let foundMedicine = null;
+    if (alternatives.length > 0) {
+      foundMedicine = {
+        Medicine_Name: alternatives[0].Medicine_Name,
+        source: 'RxNorm API'
+      };
     }
 
     res.status(200).json({
       success: true,
-      found: !!foundMedicine,
-      medicine: foundMedicine,
-      alternatives: alternatives
+      found: foundMedicine !== null,
+      data: foundMedicine,
+      alternatives: alternatives.slice(0, 5) // Return top 5
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('RxNorm Search Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to reach RxNorm database.' });
+  }
+};
+
+// @desc    Get real FDA Drug Label Data (Black Box Warnings, Indications)
+// @route   GET /api/medicine/fda/:drugName
+// @access  Private
+const getFDAData = async (req, res) => {
+  try {
+    const { drugName } = req.params;
+    
+    if (!drugName) {
+      return res.status(400).json({ success: false, error: 'Drug name is required' });
+    }
+
+    // Call OpenFDA API
+    // Search by generic name or brand name
+    const url = `https://api.fda.gov/drug/label.json?search=openfda.substance_name:"${encodeURIComponent(drugName)}"+OR+openfda.brand_name:"${encodeURIComponent(drugName)}"&limit=1`;
+    
+    const response = await axios.get(url);
+
+    if (response.data && response.data.results && response.data.results.length > 0) {
+      const fdaData = response.data.results[0];
+      
+      const clinicalData = {
+        brandName: fdaData.openfda?.brand_name?.[0] || drugName,
+        genericName: fdaData.openfda?.substance_name?.[0] || 'Unknown',
+        manufacturer: fdaData.openfda?.manufacturer_name?.[0] || 'Unknown',
+        indications: fdaData.indications_and_usage ? fdaData.indications_and_usage[0] : 'No indication data provided by FDA.',
+        warnings: fdaData.warnings ? fdaData.warnings[0] : 'No warnings listed.',
+        boxedWarning: fdaData.boxed_warning ? fdaData.boxed_warning[0] : null,
+        adverseReactions: fdaData.adverse_reactions ? fdaData.adverse_reactions[0] : 'No adverse reactions listed.',
+        route: fdaData.openfda?.route?.[0] || 'Oral'
+      };
+
+      return res.status(200).json({ success: true, data: clinicalData });
+    }
+
+    res.status(404).json({ success: false, error: 'No FDA label data found for this drug.' });
+  } catch (error) {
+    console.error('OpenFDA Error:', error);
+    if (error.response && error.response.status === 404) {
+      return res.status(404).json({ success: false, error: 'No FDA label data found for this drug.' });
+    }
+    res.status(500).json({ success: false, error: 'Failed to reach FDA servers.' });
   }
 };
 
@@ -465,6 +433,6 @@ module.exports = {
   uploadMedicinesCsv,
   updateMedicine,
   deleteMedicine,
-  checkInteractions
+  checkInteractions,
+  getFDAData
 };
-

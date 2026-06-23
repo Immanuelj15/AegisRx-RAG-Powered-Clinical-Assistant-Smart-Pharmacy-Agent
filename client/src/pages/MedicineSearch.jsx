@@ -76,17 +76,17 @@ export const MedicineSearch = () => {
       const res = await axios.get(`${API_URL}/medicine/search?query=${query}`, config);
       
       if (res.data && res.data.success) {
-        if (res.data.found && res.data.medicine) {
-          setResults([res.data.medicine]);
-          if (res.data.alternatives && res.data.alternatives.length > 0) {
-            setAlternativeMed(res.data.alternatives[0]);
-          } else {
-            setAlternativeMed(null);
-          }
-        } else {
-          setResults([]);
-          setAlternativeMed(null);
+        let newResults = [];
+        if (res.data.data) newResults.push(res.data.data);
+        if (res.data.alternatives) {
+          // Merge avoiding duplicates
+          res.data.alternatives.forEach(alt => {
+            if (!newResults.find(r => r.Medicine_Name === alt.Medicine_Name)) {
+              newResults.push(alt);
+            }
+          });
         }
+        setResults(newResults);
       }
     } catch (err) {
       console.error(err);
@@ -100,24 +100,29 @@ export const MedicineSearch = () => {
     setFdaAudit(null);
     setResearchData(null);
     setActiveTab('details');
-    if (med.Stock === 0 && med.Alternative) {
-      const foundAlt = allMedicines.find(m => 
-        m.Medicine_Name.toLowerCase().includes(med.Alternative.toLowerCase()) ||
-        m.Brand.toLowerCase().includes(med.Alternative.toLowerCase())
-      );
-      setAlternativeMed(foundAlt || { Medicine_Name: med.Alternative, Note: 'Generic recommendation.' });
-    } else {
-      setAlternativeMed(null);
-    }
 
+    // Fetch OpenFDA real-world clinical data
     try {
       setFdaLoading(true);
-      const res = await axios.get(`${API_URL}/ai/fda-audit/${encodeURIComponent(med.Medicine_Name)}`, config);
+      const res = await axios.get(`${API_URL}/medicine/fda/${encodeURIComponent(med.Medicine_Name)}`, config);
       if (res.data && res.data.success) {
-        setFdaAudit(res.data);
+        // Map the real FDA data into our local state structure so the UI works
+        const fdaData = res.data.data;
+        setSelectedMed(prev => ({
+          ...prev,
+          Brand: fdaData.brandName,
+          Generic_Name: fdaData.genericName,
+          Manufacturer: fdaData.manufacturer,
+          Indications: fdaData.indications,
+          Warnings: fdaData.warnings,
+          BoxedWarning: fdaData.boxedWarning,
+          AdverseReactions: fdaData.adverseReactions,
+          Route: fdaData.route,
+          source: 'OpenFDA API'
+        }));
       }
     } catch (err) {
-      console.error('FDA safety recall check failed:', err);
+      console.error('FDA Label fetch failed:', err);
     } finally {
       setFdaLoading(false);
     }
@@ -498,49 +503,90 @@ export const MedicineSearch = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-slate-400 font-bold">Generic Name</p>
-                  <p className="text-slate-800 dark:text-slate-200 font-medium">{selectedMed.Generic_Name || 'N/A'}</p>
+                  <p className="text-slate-800 dark:text-slate-200 font-medium">{selectedMed.Generic_Name || selectedMed.Medicine_Name}</p>
                 </div>
                 <div>
                   <p className="text-slate-400 font-bold">Brand Name</p>
-                  <p className="text-slate-800 dark:text-slate-200 font-medium">{selectedMed.Brand || 'N/A'}</p>
+                  <p className="text-slate-800 dark:text-slate-200 font-medium">{selectedMed.Brand || selectedMed.Medicine_Name}</p>
                 </div>
               </div>
 
-              <div>
-                <p className="text-slate-400 font-bold">Primary Use Case</p>
-                <p className="text-slate-800 dark:text-slate-200 font-medium">{selectedMed.Use_Case || 'N/A'}</p>
-              </div>
+              {selectedMed.source === 'OpenFDA API' && (
+                <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest rounded-md border border-indigo-200 dark:border-indigo-800/50">
+                      Live FDA Database
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500">
+                      Manufacturer: {selectedMed.Manufacturer} | Route: {selectedMed.Route}
+                    </span>
+                  </div>
 
-              <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl">
-                <div>
-                  <p className="text-slate-400 font-bold">In-Stock</p>
-                  <p className={`font-black ${selectedMed.Stock > 0 ? 'text-teal-600' : 'text-red-500'}`}>
-                    {selectedMed.Stock} units
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-bold">Price</p>
-                  <p className="text-slate-800 dark:text-slate-200 font-black">${selectedMed.Price?.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-bold">Strength</p>
-                  <p className="text-slate-800 dark:text-slate-200 font-bold">{selectedMed.Strength || 'N/A'}</p>
-                </div>
-              </div>
+                  {selectedMed.BoxedWarning && (
+                    <div className="p-4 bg-black border-2 border-red-600 rounded-xl space-y-2">
+                      <h4 className="text-red-500 font-black flex items-center gap-2 uppercase tracking-widest text-[11px]">
+                        <FiAlertCircle size={16} />
+                        FDA Black Box Warning
+                      </h4>
+                      <p className="text-white text-xs leading-relaxed font-medium">
+                        {selectedMed.BoxedWarning.substring(0, 500)}...
+                      </p>
+                    </div>
+                  )}
 
-              <div>
-                <p className="text-slate-400 font-bold">Dosage Instruction</p>
-                <p className="text-slate-800 dark:text-slate-200 font-medium">{selectedMed.Dosage || 'N/A'}</p>
-              </div>
+                  <div className="space-y-1">
+                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Indications & Usage</p>
+                    <p className="text-slate-700 dark:text-slate-300 font-medium text-xs leading-relaxed bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
+                      {selectedMed.Indications ? selectedMed.Indications.substring(0, 300) + '...' : 'N/A'}
+                    </p>
+                  </div>
 
-              {selectedMed.Warnings && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 rounded-r-xl space-y-1">
-                  <p className="text-red-700 dark:text-red-400 font-extrabold flex items-center space-x-1">
-                    <FiAlertCircle size={14} />
-                    <span>Safety Warnings & Contraindications</span>
-                  </p>
-                  <p className="text-red-650 dark:text-red-300 leading-normal">{selectedMed.Warnings}</p>
+                  <div className="space-y-1">
+                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Adverse Reactions</p>
+                    <p className="text-slate-700 dark:text-slate-300 font-medium text-xs leading-relaxed bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
+                      {selectedMed.AdverseReactions ? selectedMed.AdverseReactions.substring(0, 300) + '...' : 'N/A'}
+                    </p>
+                  </div>
+
+                  {selectedMed.Warnings && (
+                    <div className="p-3 bg-orange-50 dark:bg-orange-950/20 border-l-4 border-orange-500 rounded-r-xl space-y-1">
+                      <p className="text-orange-700 dark:text-orange-400 font-extrabold flex items-center space-x-1 text-[11px]">
+                        <FiAlertCircle size={14} />
+                        <span>General Warnings</span>
+                      </p>
+                      <p className="text-orange-800 dark:text-orange-300 text-xs leading-relaxed">
+                        {selectedMed.Warnings.substring(0, 300)}...
+                      </p>
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Legacy Mock DB details */}
+              {selectedMed.source !== 'OpenFDA API' && (
+                <>
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl">
+                    <div>
+                      <p className="text-slate-400 font-bold">In-Stock</p>
+                      <p className={`font-black ${selectedMed.Stock > 0 ? 'text-teal-600' : 'text-red-500'}`}>
+                        {selectedMed.Stock || 0} units
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-bold">Price</p>
+                      <p className="text-slate-800 dark:text-slate-200 font-black">${selectedMed.Price?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-bold">Strength</p>
+                      <p className="text-slate-800 dark:text-slate-200 font-bold">{selectedMed.Strength || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-slate-400 font-bold">Dosage Instruction</p>
+                    <p className="text-slate-800 dark:text-slate-200 font-medium">{selectedMed.Dosage || 'N/A'}</p>
+                  </div>
+                </>
               )}
 
               {selectedMed.SideEffects && (

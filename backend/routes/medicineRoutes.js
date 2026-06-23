@@ -9,7 +9,8 @@ const {
   uploadMedicinesCsv, 
   updateMedicine, 
   deleteMedicine,
-  checkInteractions 
+  checkInteractions,
+  getFDAData 
 } = require('../controllers/medicineController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -41,6 +42,7 @@ const upload = multer({
 
 router.get('/', protect, getMedicines);
 router.get('/search', protect, searchMedicine);
+router.get('/fda/:drugName', protect, getFDAData);
 router.post('/interaction-check', protect, checkInteractions);
 router.post('/upload', protect, authorize('Pharmacist', 'Admin'), upload.single('file'), uploadMedicinesCsv);
 router.put('/update', protect, authorize('Pharmacist', 'Admin'), updateMedicine);
