@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../context/AuthContext';
 import { 
@@ -13,6 +14,7 @@ import {
 import { Loader } from '../components/Loader';
 
 export const AdminPanel = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,16 +32,24 @@ export const AdminPanel = () => {
   });
 
   const fetchUsers = async () => {
+    // SECURITY CHECK: If admin is not unlocked via the master password, kick them out
+    if (sessionStorage.getItem('admin_unlocked') !== 'true') {
+      navigate('/admin');
+      return;
+    }
+    
     try {
       setLoading(true);
       // Retrieve registered accounts
-      // In a real environment, we'd have a GET /api/users endpoint.
-      // We will read from mockDB simulator if MongoDB is down.
-      // Let's call the profile or retrieve standard mockup accounts
+      // Synchronized with AdminDashboard mock data for simultaneous consistency
       setUsers([
-        { id: '1', name: 'John Patient', email: 'patient@medassist.com', role: 'Patient', phone: '123-456-7890' },
+        { id: '3', name: 'Alex Admin', email: 'admin@medassist.com', role: 'Admin', phone: '555-555-5555' },
         { id: '2', name: 'Sarah Pharmacist', email: 'pharmacist@medassist.com', role: 'Pharmacist', phone: '987-654-3210' },
-        { id: '3', name: 'Alex Admin', email: 'admin@medassist.com', role: 'Admin', phone: '555-555-5555' }
+        { id: '1', name: 'John Patient', email: 'patient@medassist.com', role: 'Patient', phone: '123-456-7890' },
+        { id: '4', name: 'Jane Smith', email: 'jane.smith@demo.com', role: 'Patient', phone: '555-010-2020' },
+        { id: '5', name: 'Michael Chen', email: 'm.chen@demo.com', role: 'Patient', phone: '555-010-3030' },
+        { id: '6', name: 'Dr. Emily Carter', email: 'ecarter@aegisrx.local', role: 'Pharmacist', phone: '555-010-4040' },
+        { id: '7', name: 'Robert Wilson', email: 'r.wilson99@demo.com', role: 'Patient', phone: '555-010-5050' }
       ]);
     } catch (err) {
       setError(err.message);

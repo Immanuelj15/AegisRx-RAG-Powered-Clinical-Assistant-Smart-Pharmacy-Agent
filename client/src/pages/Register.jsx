@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiUser, FiMail, FiLock, FiPhone, FiCalendar, FiAlertCircle } from 'react-icons/fi';
 import { Loader } from '../components/Loader';
+import { GoogleLogin } from '@react-oauth/google';
 
 export const Register = () => {
-  const { register, error: authError, clearError } = useAuth();
+  const { register, loginWithGoogle, error: authError, clearError } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,6 +63,37 @@ export const Register = () => {
           <span>{localError || authError}</span>
         </div>
       )}
+
+      {/* Google Login */}
+      <div className="mb-5 flex justify-center">
+        <GoogleLogin
+          onSuccess={async (credentialResponse) => {
+            try {
+              setLoading(true);
+              const user = await loginWithGoogle(credentialResponse.credential);
+              if (user.role === 'Admin') navigate('/dashboard/admin');
+              else if (user.role === 'Pharmacist') navigate('/dashboard/pharmacist');
+              else navigate('/dashboard/patient');
+            } catch (err) {
+              console.error(err);
+            } finally {
+              setLoading(false);
+            }
+          }}
+          onError={() => setLocalError('Google Sign Up failed')}
+          useOneTap
+          theme="filled_blue"
+          shape="rectangular"
+          size="large"
+          text="signup_with"
+        />
+      </div>
+
+      <div className="flex items-center my-5">
+        <div className="flex-1 border-t border-slate-200 dark:border-slate-800"></div>
+        <span className="px-4 text-xs font-semibold text-slate-400">or register with email</span>
+        <div className="flex-1 border-t border-slate-200 dark:border-slate-800"></div>
+      </div>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>

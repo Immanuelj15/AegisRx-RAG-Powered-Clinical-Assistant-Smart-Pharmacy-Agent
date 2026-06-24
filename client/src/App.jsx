@@ -12,6 +12,7 @@ import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
+import { AdminLogin } from './pages/AdminLogin';
 import { PatientDashboard } from './pages/PatientDashboard';
 import { PharmacistDashboard } from './pages/PharmacistDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -33,6 +34,7 @@ import { Pharmacogenomics } from './pages/Pharmacogenomics';
 import { Telemedicine } from './pages/Telemedicine';
 
 function App() {
+  // Force HMR reload
   return (
     <Router>
       <ThemeProvider>
@@ -40,6 +42,7 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
+            <Route path="/admin" element={<AdminLogin />} />
 
             {/* Auth Layout Portal */}
             <Route element={<AuthLayout />}>
@@ -62,7 +65,7 @@ function App() {
               <Route path="/calendar" element={<PillCalendar />} />
               <Route path="/prescription-writer" element={<PrescriptionWriter />} />
               <Route path="/inventory" element={<Inventory />} />
-              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/admin-panel" element={<AdminPanel />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/symptom-checker" element={<SymptomChecker />} />
               <Route path="/health-report" element={<HealthReport />} />

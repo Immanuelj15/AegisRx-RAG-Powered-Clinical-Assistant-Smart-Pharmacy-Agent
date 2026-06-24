@@ -7,6 +7,7 @@ import {
   FiArrowRight, FiSearch, FiFileText, FiMic,
   FiCheckCircle, FiActivity, FiShield, FiZap, FiSliders
 } from 'react-icons/fi';
+import { TypeAnimation } from 'react-type-animation';
 
 // Custom CountUp Hook
 const useCountUp = (end, duration = 2.5) => {
@@ -85,6 +86,22 @@ const fade = {
   visible: (i = 0) => ({
     opacity: 1, y: 0,
     transition: { duration: 1.2, ease: [0.22,1,0.36,1], delay: i * 0.15 }
+  })
+};
+
+const slideLeft = {
+  hidden: { opacity: 0, x: -50 },
+  visible: (i = 0) => ({
+    opacity: 1, x: 0,
+    transition: { duration: 1.0, ease: [0.22,1,0.36,1], delay: i * 0.15 }
+  })
+};
+
+const slideRight = {
+  hidden: { opacity: 0, x: 50 },
+  visible: (i = 0) => ({
+    opacity: 1, x: 0,
+    transition: { duration: 1.0, ease: [0.22,1,0.36,1], delay: i * 0.15 }
   })
 };
 
@@ -401,61 +418,83 @@ export const Landing = () => {
       </section>
 
       {/* ── SECURITY SECTION ──────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-6 pb-24">
-        <motion.div custom={0} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
-          className="rounded-[32px] overflow-hidden bg-slate-900 relative grid md:grid-cols-2 items-center shadow-2xl">
+      <section className="max-w-7xl mx-auto px-6 pb-24 relative z-10">
+        <motion.div custom={0} variants={slideLeft} initial="hidden" whileInView="visible" viewport={{ once: true }}
+          className="rounded-[32px] overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 relative grid md:grid-cols-2 items-center shadow-2xl">
+          {/* Subtle Grid Background */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
+          
           <div className="p-12 md:p-16 space-y-6 relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-sm font-bold text-teal-400">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-teal-600 dark:text-teal-400">
               <FiShield size={14} /> HIPAA Compliant
             </div>
-            <h2 className="text-3xl md:text-4xl font-black text-white leading-tight">
-              Enterprise-Grade <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-blue-400">Security</span>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight min-h-[96px]">
+              <TypeAnimation
+                sequence={[
+                  'Enterprise-Grade\nSecurity',
+                  1000
+                ]}
+                wrapper="div"
+                speed={50}
+                style={{ whiteSpace: 'pre-line' }}
+                cursor={true}
+              />
             </h2>
-            <p className="text-slate-400 text-lg leading-relaxed font-medium">
+            <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed font-medium">
               Your patient data is protected with end-to-end AES-256 encryption. We never train public LLMs on your clinical data, ensuring strict HIPAA compliance and absolute privacy.
             </p>
           </div>
-          <div className="h-full min-h-[300px] relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 to-transparent z-10 w-24 hidden md:block" />
-            <img src="/data-security.png" alt="Data Security" loading="lazy" className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-90" />
-          </div>
+          <motion.div custom={1} variants={slideRight} initial="hidden" whileInView="visible" viewport={{ once: true }} className="h-full min-h-[300px] relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-white dark:from-slate-900 to-transparent z-10 w-24 hidden md:block" />
+            <img src="/data-security.png" alt="Data Security" loading="lazy" className="absolute inset-0 w-full h-full object-cover mix-blend-multiply dark:mix-blend-screen opacity-90" />
+          </motion.div>
         </motion.div>
       </section>
 
       {/* ── PIPELINE SECTION ──────────────────────────────── */}
-      <section id="pipeline" className="bg-slate-900 dark:bg-slate-950 py-28 relative overflow-hidden">
-        <div className="absolute inset-0 bg-mesh opacity-30" />
+      <section id="pipeline" className="bg-slate-50 dark:bg-slate-950 py-28 relative overflow-hidden border-t border-b border-slate-200/50 dark:border-slate-800/50">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <motion.div custom={0} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-                <span className="text-sm font-bold text-primary-400 uppercase tracking-widest">Technical Architecture</span>
-                <h2 className="text-white font-black mt-3">
-                  Hybrid RAG<br /><span className="gradient-text">Pipeline</span>
+              <motion.div custom={0} variants={slideLeft} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                <span className="text-sm font-bold text-primary-500 dark:text-primary-400 uppercase tracking-widest">Technical Architecture</span>
+                <h2 className="text-slate-900 dark:text-white font-black mt-3 min-h-[96px]">
+                  <TypeAnimation
+                    sequence={[
+                      'Hybrid RAG\nPipeline',
+                      1000
+                    ]}
+                    wrapper="div"
+                    speed={50}
+                    style={{ whiteSpace: 'pre-line' }}
+                    cursor={true}
+                    className="gradient-text inline-block"
+                  />
                 </h2>
               </motion.div>
-              <motion.p custom={1} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
-                className="text-lg text-slate-400 leading-relaxed font-medium">
+              <motion.p custom={1} variants={slideLeft} initial="hidden" whileInView="visible" viewport={{ once: true }}
+                className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 AegisRx fuses dense semantic search with sparse keyword matching, then cross-encoder reranks results for clinical accuracy — so "MED4819" or "Paracetamol fever" both work perfectly.
               </motion.p>
               <div className="space-y-3">
                 {['ChromaDB local vector store', 'SimpleBM25 sparse index', 'Cross-Encoder reranking (ms-marco)', 'Groq Llama 3.3 70B generation'].map((item, i) => (
-                  <motion.div key={i} custom={i+2} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
-                    className="flex items-center gap-3 text-base font-semibold text-slate-300">
-                    <FiCheckCircle size={18} className="text-teal-400 flex-shrink-0" />
+                  <motion.div key={i} custom={i+2} variants={slideLeft} initial="hidden" whileInView="visible" viewport={{ once: true }}
+                    className="flex items-center gap-3 text-base font-semibold text-slate-700 dark:text-slate-300">
+                    <FiCheckCircle size={18} className="text-teal-500 dark:text-teal-400 flex-shrink-0" />
                     {item}
                   </motion.div>
                 ))}
               </div>
             </div>
 
-            <motion.div custom={3} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}
+            <motion.div custom={3} variants={slideRight} initial="hidden" whileInView="visible" viewport={{ once: true }}
               className="relative">
               
               {/* Isometric Image with Parallax */}
-              <motion.div className="relative rounded-[28px] overflow-hidden shadow-2xl mb-8 group border border-slate-700/50" style={{ y: yImage1 }}>
-                <img src="/features-iso.png" alt="AegisRx Dashboard Architecture" loading="lazy" className="w-full object-cover aspect-video group-hover:scale-105 transition-transform duration-[1.5s]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+              <motion.div className="relative rounded-[28px] overflow-hidden shadow-2xl mb-8 group border border-slate-200 dark:border-slate-700/50" style={{ y: yImage1 }}>
+                <img src="/features-iso.png" alt="AegisRx Dashboard Architecture" loading="lazy" className="w-full object-cover aspect-video group-hover:scale-105 transition-transform duration-[1.5s] mix-blend-multiply dark:mix-blend-normal" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-50 dark:from-slate-950 via-slate-50/20 dark:via-slate-950/20 to-transparent" />
               </motion.div>
 
               {/* Steps overlapping the image */}
@@ -463,15 +502,15 @@ export const Landing = () => {
                 {PIPELINE.map((step, i) => (
                 <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl border ${step.color} ${
                   step.highlight
-                    ? 'bg-gradient-to-r from-primary-600/20 to-teal-600/20'
-                    : 'bg-slate-800/50'
+                    ? 'bg-gradient-to-r from-primary-50 dark:from-primary-600/20 to-teal-50 dark:to-teal-600/20 shadow-md'
+                    : 'bg-white/80 dark:bg-slate-800/50 shadow-sm'
                 } backdrop-blur-sm`}>
                   <span className="text-2xl">{step.icon}</span>
-                  <span className={`font-semibold text-base ${step.highlight ? 'text-white' : 'text-slate-300'}`}>
+                  <span className={`font-semibold text-base ${step.highlight ? 'text-primary-700 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
                     {step.label}
                   </span>
                   {i < PIPELINE.length - 1 && (
-                    <div className="ml-auto text-slate-500">↓</div>
+                    <div className="ml-auto text-slate-400 dark:text-slate-500">↓</div>
                   )}
                   {step.highlight && (
                     <span className="ml-auto badge badge-ai">Live</span>
@@ -485,8 +524,8 @@ export const Landing = () => {
       </section>
 
       {/* ── TRUSTED BY PROFESSIONALS ─────────────────────── */}
-      <section className="max-w-7xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-16 items-center">
-        <motion.div custom={0} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+      <section className="max-w-7xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-16 items-center relative z-10">
+        <motion.div custom={0} variants={slideLeft} initial="hidden" whileInView="visible" viewport={{ once: true }}>
           <motion.div className="relative rounded-[32px] overflow-hidden shadow-2xl shadow-primary-500/10 aspect-[4/3] group border border-slate-200/50 dark:border-slate-700/50" style={{ y: yImage2 }}>
             <img src="/doctor-tech.png" alt="Doctor using AegisRx" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1.5s]" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent" />
@@ -498,13 +537,22 @@ export const Landing = () => {
             </div>
           </motion.div>
         </motion.div>
-        
-        <motion.div custom={1} variants={fade} initial="hidden" whileInView="visible" viewport={{ once: true }} className="space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-500 dark:text-slate-400">
+        <motion.div custom={1} variants={slideRight} initial="hidden" whileInView="visible" viewport={{ once: true }} className="space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
              <FiCheckCircle className="text-primary-500" size={14} /> Trusted Nationwide
           </div>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight">
-            Designed for <br/><span className="gradient-text">Real Clinical Environments</span>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight min-h-[96px]">
+            <TypeAnimation
+              sequence={[
+                'Designed for\nReal Clinical Environments',
+                1000
+              ]}
+              wrapper="div"
+              speed={50}
+              style={{ whiteSpace: 'pre-line' }}
+              cursor={true}
+              className="gradient-text inline-block"
+            />
           </h2>
           <p className="text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-medium max-w-md">
             Whether you are running a busy hospital pharmacy or a community clinic, AegisRx provides the instant, reliable, FDA-backed data you need to make confident clinical decisions.

@@ -87,6 +87,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (credential) => {
+    setError(null);
+    try {
+      const res = await axios.post(`${API_URL}/auth/google`, { credential });
+      if (res.data && res.data.success) {
+        setToken(res.data.token);
+        setUser(res.data.user);
+        return res.data.user;
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Google Login failed.';
+      setError(msg);
+      throw new Error(msg);
+    }
+  };
+
 
   const updateProfile = async (profileData) => {
     setError(null);
@@ -114,9 +130,11 @@ export const AuthProvider = ({ children }) => {
       error,
       login,
       register,
+      loginWithGoogle,
       logout,
       updateProfile,
-      clearError
+      clearError,
+      setUser
     }}>
       {children}
     </AuthContext.Provider>

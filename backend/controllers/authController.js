@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const mockDb = require('../utils/mockDb');
 
-// Helper to generate JWT
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const generateToken = (user) => {
   return jwt.sign(
     { 
@@ -261,10 +262,75 @@ const forgotPassword = async (req, res) => {
   }
 };
 
+// @desc    Google OAuth Login
+// @route   POST /api/auth/google
+// @access  Public
+const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ success: false, error: 'Google credential missing' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, name, sub } = payload;
+    const emailLower = email.toLowerCase();
+
+    if (process.env.MONGO_CONNECTED === 'true') {
+      let user = await User.findOne({ email: emailLower });
+      if (!user) {
+        // Create user
+        user = await User.create({
+          name,
+          email: emailLower,
+          password: await bcrypt.hash(sub, 10), // Dummy password using Google sub ID
+          role: 'Patient',
+          phone: '',
+          gender: ''
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        token: generateToken(user),
+        user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      });
+    } else {
+      let user = mockDb.getMockUserByEmail(emailLower);
+      if (!user) {
+        user = {
+          _id: `google_user_${Date.now()}`,
+          name,
+          email: emailLower,
+          password: bcrypt.hashSync(sub, 10),
+          role: 'Patient',
+          phone: '',
+          gender: '',
+          medicalHistory: '',
+          createdAt: new Date()
+        };
+        mockDb.saveMockUser(user);
+      }
+      return res.status(200).json({
+        success: true,
+        token: generateToken(user),
+        user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      });
+    }
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to authenticate with Google' });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getUserProfile,
   updateUserProfile,
-  forgotPassword
+  forgotPassword,
+  googleLogin
 };
