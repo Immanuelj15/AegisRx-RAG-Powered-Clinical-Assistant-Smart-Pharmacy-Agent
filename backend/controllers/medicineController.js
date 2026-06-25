@@ -255,9 +255,181 @@ const uploadMedicinesCsv = async (req, res) => {
   }
 };
 
+
+// @desc    Update single medicine details
+// @route   PUT /api/medicine/update
+// @access  Private (Pharmacist / Admin)
+const updateMedicine = async (req, res) => {
+  try {
+    const { Medicine_ID } = req.body;
+
+    if (!Medicine_ID) {
+      return res.status(400).json({ success: false, error: 'Medicine_ID is required to identify records' });
+    }
+
+    let updatedRecord = null;
+
+    if (process.env.DB_CONNECTED === 'true') {
+      try {
+        updatedRecord = await prisma.medicine.update({
+          where: { Medicine_ID },
+          data: req.body
+        });
+      } catch (err) {
+        if (err.code === 'P2025') updatedRecord = null;
+        else throw err;
+      }
+    }
+
+    updatedRecord = mockDb.saveMockMedicine(req.body);
+    syncCatalogToRAG();
+
+    res.status(200).json({
+      success: true,
+      message: 'Medicine updated successfully',
+      data: updatedRecord
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Delete medicine
+// @route   DELETE /api/medicine/delete
+// @access  Private (Admin)
+const deleteMedicine = async (req, res) => {
+  try {
+    const { Medicine_ID } = req.body;
+
+    if (!Medicine_ID) {
+      return res.status(400).json({ success: false, error: 'Medicine_ID is required' });
+    }
+
+    let deletedCount = 0;
+
+    if (process.env.DB_CONNECTED === 'true') {
+      try {
+        await prisma.medicine.delete({
+          where: { Medicine_ID }
+        });
+        deletedCount = 1;
+      } catch (err) {
+        if (err.code === 'P2025') deletedCount = 0;
+        else throw err;
+      }
+    }
+
+    const mockDel = mockDb.deleteMockMedicine(Medicine_ID);
+    if (mockDel) deletedCount = 1;
+
+    if (deletedCount === 0) {
+      return res.status(404).json({ success: false, error: 'Medicine not found' });
+    }
+
+    syncCatalogToRAG();
+
+    res.status(200).json({
+      success: true,
+      message: `Medicine with ID ${Medicine_ID} deleted successfully.`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const syncCatalogToRAG = async () => {
+  try {
+    let list = [];
+    if (process.env.DB_CONNECTED === 'true') {
+      list = await prisma.medicine.findMany({});
+    } else {
+      list = mockDb.getMockMedicines();
+    }
+
+    const csvPath = path.join(__dirname, '..', 'csv', 'medicines.csv');
+    const csvWriter = require('fs').createWriteStream(csvPath);
+    
+    csvWriter.write('Medicine_ID,Medicine_Name,Brand,Generic_Name,Strength,Use_Case,Alternative,Stock,Price,Manufacturer,Dosage,Morning,Afternoon,Night,BeforeFood,AfterFood,SideEffects,Warnings,Expiry,Category\n');
+    
+    for (const m of list) {
+      const line = `"${m.Medicine_ID}","${m.Medicine_Name}","${m.Brand}","${m.Generic_Name}","${m.Strength}","${m.Use_Case}","${m.Alternative}",${m.Stock},${m.Price},"${m.Manufacturer}","${m.Dosage}","${m.Morning}","${m.Afternoon}","${m.Night}",${m.BeforeFood},${m.AfterFood},"${m.SideEffects}","${m.Warnings}","${m.Expiry}","${m.Category}"\n`;
+      csvWriter.write(line);
+    }
+    
+    csvWriter.end();
+
+    await axios.post(`${RAG_SERVICE_URL}/api/rag/ingest`, {
+      csv_path: csvPath
+    });
+    console.log('Synchronized vector database after manual inventory edit.');
+  } catch (err) {
+    console.warn('RAG service sync failed in edit handler:', err.message);
+  }
+};
+
+// @desc    Check drug-drug interactions for a list of medicine names
+// @route   POST /api/medicine/interaction-check
+// @access  Private
+const checkInteractions = async (req, res) => {
+  try {
+    const { medicines } = req.body;
+
+    if (!medicines || !Array.isArray(medicines) || medicines.length < 2) {
+      return res.status(400).json({ success: false, error: 'At least two medicines are required for interaction checking' });
+    }
+
+    const cleanNames = medicines.map(name => name.trim().toLowerCase());
+    const interactionWarnings = [];
+
+    for (let i = 0; i < cleanNames.length; i++) {
+      for (let j = i + 1; j < cleanNames.length; j++) {
+        const drugAWord = cleanNames[i].split(' ')[0];
+        const drugBWord = cleanNames[j].split(' ')[0];
+
+        let match = null;
+        if (process.env.DB_CONNECTED === 'true') {
+          match = await prisma.interaction.findFirst({
+            where: {
+              OR: [
+                { drugA: drugAWord, drugB: drugBWord },
+                { drugA: drugBWord, drugB: drugAWord }
+              ]
+            }
+          });
+        } else {
+          match = mockDb.getMockInteractions().find(item => 
+            (item.drugA === drugAWord && item.drugB === drugBWord) ||
+            (item.drugA === drugBWord && item.drugB === drugAWord)
+          );
+        }
+
+        if (match) {
+          interactionWarnings.push({
+            drugA: medicines[i],
+            drugB: medicines[j],
+            severity: match.severity,
+            description: match.description
+          });
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      hasInteractions: interactionWarnings.length > 0,
+      warnings: interactionWarnings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getMedicines,
   searchMedicine,
   getFDAData,
-  uploadMedicinesCsv
+  uploadMedicinesCsv,
+  updateMedicine,
+  deleteMedicine,
+  checkInteractions
 };
