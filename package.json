@@ -12,6 +12,7 @@
     "install:all": "npm install && npm install --prefix client && pip install flask flask-cors chromadb sentence-transformers pandas"
   },
   "dependencies": {
+    "@prisma/client": "^7.8.0",
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -28,7 +29,8 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "nodemon": "^3.1.2"
+    "nodemon": "^3.1.2",
+    "prisma": "^7.8.0"
   },
   "author": "Senior Full Stack AI Engineer",
   "license": "MIT"

@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String                 @id @default(uuid())
+  name           String
+  email          String                 @unique
+  password       String
+  role           String                 @default("Patient")
+  phone          String?                @default("")
+  age            Int?
+  gender         String?                @default("")
+  medicalHistory String?                @default("")
+  createdAt      DateTime               @default(now())
+  
+  searchLogs     SearchLog[]
+  prescriptions  PrescriptionSchedule[]
+  chatSessions   ChatSession[]
+}
+
+model Medicine {
+  id            String   @id @default(uuid())
+  Medicine_ID   String   @unique
+  Medicine_Name String
+  Brand         String?  @default("")
+  Generic_Name  String?  @default("")
+  Strength      String?  @default("")
+  Use_Case      String?  @default("")
+  Alternative   String?  @default("")
+  Stock         Int      @default(0)
+  Price         Float    @default(0.0)
+  Manufacturer  String?  @default("")
+  Dosage        String?  @default("")
+  Morning       String?  @default("0")
+  Afternoon     String?  @default("0")
+  Night         String?  @default("0")
+  BeforeFood    Boolean  @default(false)
+  AfterFood     Boolean  @default(false)
+  SideEffects   String?  @default("")
+  Warnings      String?  @default("")
+  Expiry        String?  @default("")
+  Category      String?  @default("")
+  createdAt     DateTime @default(now())
+}
+
+model Interaction {
+  id          String   @id @default(uuid())
+  drugA       String
+  drugB       String
+  severity    String   @default("Moderate")
+  description String
+  createdAt   DateTime @default(now())
+
+  @@unique([drugA, drugB])
+}
+
+model SearchLog {
+  id                    String   @id @default(uuid())
+  query                 String
+  userId                String?
+  user                  User?    @relation(fields: [userId], references: [id])
+  userRole              String   @default("Guest")
+  wasFound              Boolean  @default(false)
+  medicineName          String?  @default("")
+  alternativesSuggested String[] @default([])
+  timestamp             DateTime @default(now())
+}
+
+model PrescriptionSchedule {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  medicineName String
+  strength     String?  @default("")
+  freqMorning  Boolean  @default(false)
+  freqAfternoon Boolean @default(false)
+  freqNight    Boolean  @default(false)
+  foodRelation String   @default("None")
+  startDate    DateTime @default(now())
+  durationDays Int      @default(7)
+  dosesTaken   Json     @default("[]")
+  refillRequested Boolean @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model ChatSession {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  title     String    @default("New Consultation")
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+}
+
+model Message {
+  id            String      @id @default(uuid())
+  chatSessionId String
+  chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  role          String
+  content       String
+  timestamp     DateTime    @default(now())
+}
