@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 
-const connectDB = require('./backend/config/db');
+const { connectDB } = require('./backend/config/db');
 const authRoutes = require('./backend/routes/authRoutes');
 const medicineRoutes = require('./backend/routes/medicineRoutes');
 const aiRoutes = require('./backend/routes/aiRoutes');
