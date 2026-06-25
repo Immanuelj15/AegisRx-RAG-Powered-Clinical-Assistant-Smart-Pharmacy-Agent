@@ -18,9 +18,13 @@ print("Model loaded successfully.")
 
 # Load the CrossEncoder model with offline resilience
 try:
-    print("Loading cross-encoder/ms-marco-MiniLM-L-6-v2 model...")
-    reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-    print("Reranker cross-encoder model loaded successfully.")
+    if os.environ.get('LOW_MEMORY') == 'true':
+        print("LOW_MEMORY mode enabled. Skipping Cross-Encoder to save RAM on Render Free Tier.")
+        reranker = None
+    else:
+        print("Loading cross-encoder/ms-marco-MiniLM-L-6-v2 model...")
+        reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+        print("Reranker cross-encoder model loaded successfully.")
 except Exception as e:
     print(f"Warning: Failed to load Cross-Encoder, proceeding with RRF fallback: {e}")
     reranker = None
