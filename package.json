@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "npx prisma generate",
     "server": "nodemon server.js",
     "client": "npm run dev --prefix client",
     "rag": "python backend/services/rag_service.py",

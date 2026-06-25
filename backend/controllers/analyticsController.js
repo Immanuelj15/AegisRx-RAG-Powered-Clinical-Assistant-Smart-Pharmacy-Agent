@@ -1,6 +1,4 @@
-const User = require('../models/User');
-const Medicine = require('../models/Medicine');
-const SearchLog = require('../models/SearchLog');
+const { prisma } = require('../config/db');
 const mockDb = require('../utils/mockDb');
 
 // @desc    Get dashboard summary statistics
@@ -14,27 +12,25 @@ const getDashboardStats = async (req, res) => {
     let outOfStockCount = 0;
     let categoriesCount = {};
 
-    if (process.env.MONGO_CONNECTED === 'true') {
-      totalUsers = await User.countDocuments({});
-      totalSearches = await SearchLog.countDocuments({});
-      totalMedicines = await Medicine.countDocuments({});
-      outOfStockCount = await Medicine.countDocuments({ Stock: 0 });
+    if (process.env.DB_CONNECTED === 'true') {
+      totalUsers = await prisma.user.count();
+      totalSearches = await prisma.searchLog.count();
+      totalMedicines = await prisma.medicine.count();
+      outOfStockCount = await prisma.medicine.count({ where: { Stock: 0 } });
 
-      // Aggregate categories
-      const categoriesData = await Medicine.aggregate([
-        { $group: { _id: '$Category', count: { $sum: 1 } } }
-      ]);
+      const categoriesData = await prisma.medicine.groupBy({
+        by: ['Category'],
+        _count: { Category: true }
+      });
       categoriesData.forEach(c => {
-        if (c._id) categoriesCount[c._id] = c.count;
+        if (c.Category) categoriesCount[c.Category] = c._count.Category;
       });
     } else {
-      // Mock db analytics
       totalUsers = mockDb.users.length;
-      totalSearches = mockDb.searchLogs.length + 15; // seed visual data
+      totalSearches = mockDb.searchLogs.length + 15;
       totalMedicines = mockDb.medicines.length;
       outOfStockCount = mockDb.medicines.filter(m => m.Stock === 0).length;
 
-      // Group mock categories
       mockDb.medicines.forEach(m => {
         if (m.Category) {
           categoriesCount[m.Category] = (categoriesCount[m.Category] || 0) + 1;
@@ -65,21 +61,21 @@ const getPopularMedicines = async (req, res) => {
   try {
     let popularList = [];
 
-    if (process.env.MONGO_CONNECTED === 'true') {
-      popularList = await SearchLog.aggregate([
-        { $match: { wasFound: true } },
-        { $group: { _id: '$medicineName', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 }
-      ]);
+    if (process.env.DB_CONNECTED === 'true') {
+      const grouped = await prisma.searchLog.groupBy({
+        by: ['medicineName'],
+        where: { wasFound: true, medicineName: { not: null } },
+        _count: { medicineName: true },
+        orderBy: { _count: { medicineName: 'desc' } },
+        take: 5
+      });
       
-      popularList = popularList.map(item => ({
-        name: item._id || 'Unknown',
-        searches: item.count
+      popularList = grouped.map(item => ({
+        name: item.medicineName,
+        searches: item._count.medicineName
       }));
     }
 
-    // If MongoDB didn't have search logs, or we're in mock mode, provide high quality seed stats
     if (popularList.length === 0) {
       popularList = [
         { name: 'Paracetamol 500mg', searches: 12 },

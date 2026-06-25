@@ -1,6 +1,16 @@
-const PrescriptionSchedule = require('../models/PrescriptionSchedule');
-const Medicine = require('../models/Medicine');
+const { prisma } = require('../config/db');
 const mockDb = require('../utils/mockDb');
+
+const formatSchedule = (s) => {
+  return {
+    ...s,
+    frequency: {
+      morning: s.freqMorning,
+      afternoon: s.freqAfternoon,
+      night: s.freqNight
+    }
+  };
+};
 
 // @desc    Get all active schedules for the logged in user
 // @route   GET /api/schedules
@@ -10,8 +20,12 @@ const getSchedules = async (req, res) => {
     const userId = req.user._id || req.user.id;
     let list = [];
 
-    if (process.env.MONGO_CONNECTED === 'true') {
-      list = await PrescriptionSchedule.find({ userId }).sort({ createdAt: -1 });
+    if (process.env.DB_CONNECTED === 'true') {
+      const rawList = await prisma.prescriptionSchedule.findMany({ 
+        where: { userId }, 
+        orderBy: { createdAt: 'desc' } 
+      });
+      list = rawList.map(formatSchedule);
     } else {
       list = mockDb.getMockSchedulesByUserId(userId);
     }
@@ -34,21 +48,34 @@ const createSchedule = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Medicine name is required' });
     }
 
-    const scheduleData = {
-      userId,
-      medicineName,
-      strength: strength || '',
-      frequency: frequency || { morning: false, afternoon: false, night: false },
-      foodRelation: foodRelation || 'None',
-      durationDays: parseInt(durationDays) || 7,
-      startDate: startDate ? new Date(startDate) : new Date(),
-      dosesTaken: []
-    };
-
     let newSchedule = null;
-    if (process.env.MONGO_CONNECTED === 'true') {
-      newSchedule = await PrescriptionSchedule.create(scheduleData);
+    if (process.env.DB_CONNECTED === 'true') {
+      const rawSchedule = await prisma.prescriptionSchedule.create({
+        data: {
+          userId,
+          medicineName,
+          strength: strength || '',
+          freqMorning: frequency?.morning || false,
+          freqAfternoon: frequency?.afternoon || false,
+          freqNight: frequency?.night || false,
+          foodRelation: foodRelation || 'None',
+          durationDays: parseInt(durationDays) || 7,
+          startDate: startDate ? new Date(startDate) : new Date(),
+          dosesTaken: []
+        }
+      });
+      newSchedule = formatSchedule(rawSchedule);
     } else {
+      const scheduleData = {
+        userId,
+        medicineName,
+        strength: strength || '',
+        frequency: frequency || { morning: false, afternoon: false, night: false },
+        foodRelation: foodRelation || 'None',
+        durationDays: parseInt(durationDays) || 7,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        dosesTaken: []
+      };
       newSchedule = mockDb.saveMockSchedule(scheduleData);
     }
 
@@ -70,35 +97,39 @@ const takeDose = async (req, res) => {
     }
 
     let schedule = null;
-    if (process.env.MONGO_CONNECTED === 'true') {
-      schedule = await PrescriptionSchedule.findById(scheduleId);
+    if (process.env.DB_CONNECTED === 'true') {
+      schedule = await prisma.prescriptionSchedule.findUnique({ where: { id: scheduleId } });
+      if (!schedule) {
+        return res.status(404).json({ success: false, error: 'Schedule not found' });
+      }
+
+      let doses = Array.isArray(schedule.dosesTaken) ? [...schedule.dosesTaken] : [];
+      const existIdx = doses.findIndex(d => d.date === date && d.timeSlot === timeSlot);
+
+      if (isTaken) {
+        if (existIdx === -1) doses.push({ date, timeSlot });
+      } else {
+        if (existIdx !== -1) doses.splice(existIdx, 1);
+      }
+
+      schedule = await prisma.prescriptionSchedule.update({
+        where: { id: scheduleId },
+        data: { dosesTaken: doses }
+      });
+      schedule = formatSchedule(schedule);
     } else {
       schedule = mockDb.getMockSchedulesByUserId(req.user._id || req.user.id).find(s => s._id === scheduleId || s.id === scheduleId);
-    }
-
-    if (!schedule) {
-      return res.status(404).json({ success: false, error: 'Schedule not found' });
-    }
-
-    // Update doses taken array
-    const existIdx = schedule.dosesTaken.findIndex(d => d.date === date && d.timeSlot === timeSlot);
-
-    if (isTaken) {
-      // Add if not exists
-      if (existIdx === -1) {
-        schedule.dosesTaken.push({ date, timeSlot });
+      if (!schedule) {
+        return res.status(404).json({ success: false, error: 'Schedule not found' });
       }
-    } else {
-      // Remove if exists
-      if (existIdx !== -1) {
-        schedule.dosesTaken.splice(existIdx, 1);
-      }
-    }
 
-    // Save
-    if (process.env.MONGO_CONNECTED === 'true') {
-      await schedule.save();
-    } else {
+      const existIdx = schedule.dosesTaken.findIndex(d => d.date === date && d.timeSlot === timeSlot);
+
+      if (isTaken) {
+        if (existIdx === -1) schedule.dosesTaken.push({ date, timeSlot });
+      } else {
+        if (existIdx !== -1) schedule.dosesTaken.splice(existIdx, 1);
+      }
       mockDb.saveMockSchedule(schedule);
     }
 
@@ -120,28 +151,33 @@ const requestRefill = async (req, res) => {
     }
 
     let schedule = null;
-    if (process.env.MONGO_CONNECTED === 'true') {
-      schedule = await PrescriptionSchedule.findById(scheduleId);
+    if (process.env.DB_CONNECTED === 'true') {
+      schedule = await prisma.prescriptionSchedule.findUnique({ where: { id: scheduleId } });
+      
+      if (!schedule) {
+        return res.status(404).json({ success: false, error: 'Schedule not found' });
+      }
+
+      schedule = await prisma.prescriptionSchedule.update({
+        where: { id: scheduleId },
+        data: { refillRequested: true }
+      });
+
+      // Deduct 30 units
+      await prisma.medicine.updateMany({
+        where: { Medicine_Name: { contains: schedule.medicineName, mode: 'insensitive' } },
+        data: { Stock: { decrement: 30 } }
+      });
+
+      schedule = formatSchedule(schedule);
     } else {
       schedule = mockDb.getMockSchedulesByUserId(req.user._id || req.user.id).find(s => s._id === scheduleId || s.id === scheduleId);
-    }
-
-    if (!schedule) {
-      return res.status(404).json({ success: false, error: 'Schedule not found' });
-    }
-
-    // Flag refill as requested
-    schedule.refillRequested = true;
-
-    // Simulate inventory consumption: check off 30 units from the matching medicine
-    if (process.env.MONGO_CONNECTED === 'true') {
-      await schedule.save();
-      await Medicine.findOneAndUpdate(
-        { Medicine_Name: { $regex: schedule.medicineName, $options: 'i' } },
-        { $inc: { Stock: -30 } } // dispense/refill deduction
-      );
-    } else {
+      if (!schedule) {
+        return res.status(404).json({ success: false, error: 'Schedule not found' });
+      }
+      schedule.refillRequested = true;
       mockDb.saveMockSchedule(schedule);
+
       const matchingMed = mockDb.getMockMedicines().find(m => m.Medicine_Name.toLowerCase().includes(schedule.medicineName.toLowerCase()));
       if (matchingMed) {
         matchingMed.Stock = Math.max(0, matchingMed.Stock - 30);
@@ -149,7 +185,7 @@ const requestRefill = async (req, res) => {
       }
     }
 
-    res.status(200).json({ success: true, message: 'Refill requested and processed successfully', schedule });
+    res.status(200).json({ success: true, message: 'Refill requested and inventory updated.', schedule });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

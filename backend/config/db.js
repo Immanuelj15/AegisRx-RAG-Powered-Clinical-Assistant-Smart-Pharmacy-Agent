@@ -1,27 +1,28 @@
-const mongoose = require('mongoose');
+const { PrismaClient } = require('@prisma/client');
 
+const prisma = new PrismaClient();
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) return;
+  if (isConnected) return prisma;
 
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/aegisrx', {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of default 30s
-    });
-
+    // Attempt to connect to Supabase Postgres
+    await prisma.$connect();
+    
     isConnected = true;
-    process.env.MONGO_CONNECTED = 'true';
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    process.env.DB_CONNECTED = 'true';
+    console.log(`Prisma Connected to Supabase PostgreSQL Database!`);
+    return prisma;
   } catch (error) {
     isConnected = false;
-    process.env.MONGO_CONNECTED = 'false';
+    process.env.DB_CONNECTED = 'false';
     console.error('============================================================');
-    console.error(`WARNING: MongoDB connection failed: ${error.message}`);
+    console.error(`WARNING: Prisma connection failed: ${error.message}`);
     console.error('The backend will run in Resilient Local-Memory Fallback Mode.');
-    console.error('All users, chat sessions, and logs will be simulated in memory.');
     console.error('============================================================');
+    return prisma;
   }
 };
 
-module.exports = connectDB;
+module.exports = { connectDB, prisma };

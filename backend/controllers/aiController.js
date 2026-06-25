@@ -199,7 +199,7 @@ const suggestAlternative = async (req, res) => {
     // Try to find medicine details and alternatives
     let medRecord = null;
     if (process.env.MONGO_CONNECTED === 'true') {
-      medRecord = await Medicine.findOne({ Medicine_Name: { $regex: medicineName, $options: 'i' } });
+      medRecord = await prisma.medicine.findFirst({ where: { Medicine_Name: { contains: medicineName, mode: 'insensitive' } } });
     } else {
       medRecord = mockDb.getMockMedicines().find(m => m.Medicine_Name.toLowerCase().includes(medicineName.toLowerCase()));
     }
@@ -230,7 +230,7 @@ const getChatSessions = async (req, res) => {
     const userId = req.user._id || req.user.id;
     let list = [];
     if (process.env.MONGO_CONNECTED === 'true') {
-      list = await ChatSession.find({ userId }).sort({ updatedAt: -1 });
+      list = await prisma.chatSession.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } });
     } else {
       list = mockDb.getMockChatSessionsByUserId(userId);
     }
@@ -269,7 +269,7 @@ const exportProcurementPO = async (req, res) => {
     let lowStockMeds = [];
 
     if (process.env.MONGO_CONNECTED === 'true') {
-      lowStockMeds = await Medicine.find({ Stock: { $lt: 10 } });
+      lowStockMeds = await prisma.medicine.findMany({ where: { Stock: { lt: 10 } } });
     } else {
       lowStockMeds = mockDb.getMockMedicines().filter(m => m.Stock < 10);
     }

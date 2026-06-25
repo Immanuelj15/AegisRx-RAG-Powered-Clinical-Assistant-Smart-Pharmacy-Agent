@@ -2,8 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const csvParser = require('csv-parser');
-const Medicine = require('../models/Medicine');
-const SearchLog = require('../models/SearchLog');
+const { prisma } = require('../config/db');
 const mockDb = require('../utils/mockDb');
 
 // RAG service url from env
@@ -15,31 +14,34 @@ const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://127.0.0.1:5001';
 const getMedicines = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '', category = '' } = req.query;
-    const skip = (page - 1) * limit;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
 
     let medicinesList = [];
     let total = 0;
 
-    if (process.env.MONGO_CONNECTED === 'true') {
-      const query = {};
+    if (process.env.DB_CONNECTED === 'true') {
+      const whereClause = {};
       
       if (search) {
-        query.$or = [
-          { Medicine_Name: { $regex: search, $options: 'i' } },
-          { Brand: { $regex: search, $options: 'i' } },
-          { Generic_Name: { $regex: search, $options: 'i' } }
+        whereClause.OR = [
+          { Medicine_Name: { contains: search, mode: 'insensitive' } },
+          { Brand: { contains: search, mode: 'insensitive' } },
+          { Generic_Name: { contains: search, mode: 'insensitive' } }
         ];
       }
 
       if (category) {
-        query.Category = category;
+        whereClause.Category = category;
       }
 
-      total = await Medicine.countDocuments(query);
-      medicinesList = await Medicine.find(query)
-        .sort({ Medicine_Name: 1 })
-        .skip(skip)
-        .limit(Number(limit));
+      total = await prisma.medicine.count({ where: whereClause });
+      medicinesList = await prisma.medicine.findMany({
+        where: whereClause,
+        orderBy: { Medicine_Name: 'asc' },
+        skip,
+        take
+      });
     } else {
       // Mock db implementation
       let temp = mockDb.getMockMedicines();
@@ -58,7 +60,7 @@ const getMedicines = async (req, res) => {
       }
 
       total = temp.length;
-      medicinesList = temp.slice(skip, skip + Number(limit));
+      medicinesList = temp.slice(skip, skip + take);
     }
 
     res.status(200).json({
@@ -66,9 +68,9 @@ const getMedicines = async (req, res) => {
       data: medicinesList,
       pagination: {
         page: Number(page),
-        limit: Number(limit),
+        limit: take,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / take)
       }
     });
   } catch (error) {
@@ -92,7 +94,6 @@ const searchMedicine = async (req, res) => {
     
     let alternatives = [];
     if (response.data && response.data.approximateGroup && response.data.approximateGroup.candidate) {
-      // Map candidates to our frontend structure
       alternatives = response.data.approximateGroup.candidate.map(item => ({
         Medicine_Name: item.name,
         rxcui: item.rxcui,
@@ -100,8 +101,6 @@ const searchMedicine = async (req, res) => {
       }));
     }
 
-    // Since RxNorm is an autocomplete API, we just return the alternatives list as "foundMedicine" if there's an exact top match, 
-    // or just return the alternatives.
     let foundMedicine = null;
     if (alternatives.length > 0) {
       foundMedicine = {
@@ -133,11 +132,8 @@ const getFDAData = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Drug name is required' });
     }
 
-    // Call OpenFDA API
-    // Search by generic name or brand name
     let url = `https://api.fda.gov/drug/label.json?search=openfda.substance_name:"${encodeURIComponent(drugName)}"+OR+openfda.brand_name:"${encodeURIComponent(drugName)}"&limit=1`;
     
-    // Add API key if provided in .env to increase rate limits (240 requests/min vs 40 requests/min)
     if (process.env.OPENFDA_API_KEY) {
       url += `&api_key=${process.env.OPENFDA_API_KEY}`;
     }
@@ -183,11 +179,9 @@ const uploadMedicinesCsv = async (req, res) => {
     const csvFilePath = req.file.path;
     const parsedMedicines = [];
 
-    // Parse local CSV
     fs.createReadStream(csvFilePath)
       .pipe(csvParser())
       .on('data', (row) => {
-        // Clean and prepare columns
         if (row.Medicine_Name) {
           parsedMedicines.push({
             Medicine_ID: row.Medicine_ID || `MED${Date.now()}_${parsedMedicines.length}`,
@@ -215,23 +209,20 @@ const uploadMedicinesCsv = async (req, res) => {
       })
       .on('end', async () => {
         try {
-          // 1. Save to MongoDB if connected
-          if (process.env.MONGO_CONNECTED === 'true') {
+          if (process.env.DB_CONNECTED === 'true') {
             for (const item of parsedMedicines) {
-              await Medicine.findOneAndUpdate(
-                { Medicine_ID: item.Medicine_ID },
-                item,
-                { upsert: true, new: true }
-              );
+              await prisma.medicine.upsert({
+                where: { Medicine_ID: item.Medicine_ID },
+                update: item,
+                create: item
+              });
             }
           }
 
-          // 2. Also update mock memory store
           for (const item of parsedMedicines) {
             mockDb.saveMockMedicine(item);
           }
 
-          // 3. Trigger Flask RAG vector database ingestion
           let ragSuccess = false;
           let ragMessage = '';
           
@@ -248,186 +239,18 @@ const uploadMedicinesCsv = async (req, res) => {
             ragMessage = 'Vector database sync failed, but catalog database was seeded.';
           }
 
-          res.status(200).json({
-            success: true,
-            count: parsedMedicines.length,
-            ragSynced: ragSuccess,
-            message: `Successfully processed ${parsedMedicines.length} medicine records. ${ragMessage}`
+          res.status(200).json({ 
+            success: true, 
+            message: `Successfully uploaded ${parsedMedicines.length} medicines.`,
+            rag_status: { success: ragSuccess, message: ragMessage }
           });
-        } catch (dbErr) {
-          console.error(dbErr);
-          res.status(500).json({ success: false, error: 'Database seeding failed: ' + dbErr.message });
+        } catch (dbError) {
+          console.error('Database Sync Error:', dbError);
+          res.status(500).json({ success: false, error: 'Failed to save parsed data to DB' });
         }
       });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// @desc    Update single medicine details
-// @route   PUT /api/medicine/update
-// @access  Private (Pharmacist / Admin)
-const updateMedicine = async (req, res) => {
-  try {
-    const { Medicine_ID } = req.body;
-
-    if (!Medicine_ID) {
-      return res.status(400).json({ success: false, error: 'Medicine_ID is required to identify records' });
-    }
-
-    let updatedRecord = null;
-
-    if (process.env.MONGO_CONNECTED === 'true') {
-      updatedRecord = await Medicine.findOneAndUpdate(
-        { Medicine_ID },
-        req.body,
-        { new: true }
-      );
-    }
-
-    // Also update mock memory store
-    updatedRecord = mockDb.saveMockMedicine(req.body);
-
-    // Sync with vector DB by doing a full ingest of current catalog
-    // Write out the current inventory to CSV to re-ingest
-    syncCatalogToRAG();
-
-    res.status(200).json({
-      success: true,
-      message: 'Medicine updated successfully',
-      data: updatedRecord
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// @desc    Delete medicine
-// @route   DELETE /api/medicine/delete
-// @access  Private (Admin)
-const deleteMedicine = async (req, res) => {
-  try {
-    const { Medicine_ID } = req.body;
-
-    if (!Medicine_ID) {
-      return res.status(400).json({ success: false, error: 'Medicine_ID is required' });
-    }
-
-    let deletedCount = 0;
-
-    if (process.env.MONGO_CONNECTED === 'true') {
-      const resVal = await Medicine.deleteOne({ Medicine_ID });
-      deletedCount = resVal.deletedCount;
-    }
-
-    // Also delete from mock database
-    const mockDel = mockDb.deleteMockMedicine(Medicine_ID);
-    if (mockDel) deletedCount = 1;
-
-    if (deletedCount === 0) {
-      return res.status(404).json({ success: false, error: 'Medicine not found' });
-    }
-
-    // Sync RAG
-    syncCatalogToRAG();
-
-    res.status(200).json({
-      success: true,
-      message: `Medicine with ID ${Medicine_ID} deleted successfully.`
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// Helper utility to keep vector DB in sync after edits
-const syncCatalogToRAG = async () => {
-  try {
-    // Fetch all current medicines
-    let list = [];
-    if (process.env.MONGO_CONNECTED === 'true') {
-      list = await Medicine.find({});
-    } else {
-      list = mockDb.getMockMedicines();
-    }
-
-    // Write to our main CSV seed
-    const csvPath = path.join(__dirname, '..', 'csv', 'medicines.csv');
-    const csvWriter = require('fs').createWriteStream(csvPath);
-    
-    // Write headers
-    csvWriter.write('Medicine_ID,Medicine_Name,Brand,Generic_Name,Strength,Use_Case,Alternative,Stock,Price,Manufacturer,Dosage,Morning,Afternoon,Night,BeforeFood,AfterFood,SideEffects,Warnings,Expiry,Category\n');
-    
-    for (const m of list) {
-      const line = `"${m.Medicine_ID}","${m.Medicine_Name}","${m.Brand}","${m.Generic_Name}","${m.Strength}","${m.Use_Case}","${m.Alternative}",${m.Stock},${m.Price},"${m.Manufacturer}","${m.Dosage}","${m.Morning}","${m.Afternoon}","${m.Night}",${m.BeforeFood},${m.AfterFood},"${m.SideEffects}","${m.Warnings}","${m.Expiry}","${m.Category}"\n`;
-      csvWriter.write(line);
-    }
-    
-    csvWriter.end();
-
-    // Trigger RAG Ingestion on Python Service
-    await axios.post(`${RAG_SERVICE_URL}/api/rag/ingest`, {
-      csv_path: csvPath
-    });
-    console.log('Synchronized vector database after manual inventory edit.');
-  } catch (err) {
-    console.warn('RAG service sync failed in edit handler:', err.message);
-  }
-};
-
-// @desc    Check drug-drug interactions for a list of medicine names
-// @route   POST /api/medicine/interaction-check
-// @access  Private
-const checkInteractions = async (req, res) => {
-  try {
-    const { medicines } = req.body;
-
-    if (!medicines || !Array.isArray(medicines) || medicines.length < 2) {
-      return res.status(400).json({ success: false, error: 'At least two medicines are required for interaction checking' });
-    }
-
-    const cleanNames = medicines.map(name => name.trim().toLowerCase());
-    const interactionWarnings = [];
-    const Interaction = require('../models/Interaction');
-
-    for (let i = 0; i < cleanNames.length; i++) {
-      for (let j = i + 1; j < cleanNames.length; j++) {
-        // Simple helper to isolate drug name from strengths (e.g. "Ibuprofen 400mg" -> "ibuprofen")
-        const drugAWord = cleanNames[i].split(' ')[0];
-        const drugBWord = cleanNames[j].split(' ')[0];
-
-        let match = null;
-        if (process.env.MONGO_CONNECTED === 'true') {
-          match = await Interaction.findOne({
-            $or: [
-              { drugA: drugAWord, drugB: drugBWord },
-              { drugA: drugBWord, drugB: drugAWord }
-            ]
-          });
-        } else {
-          match = mockDb.getMockInteractions().find(item => 
-            (item.drugA === drugAWord && item.drugB === drugBWord) ||
-            (item.drugA === drugBWord && item.drugB === drugAWord)
-          );
-        }
-
-        if (match) {
-          interactionWarnings.push({
-            drugA: medicines[i],
-            drugB: medicines[j],
-            severity: match.severity,
-            description: match.description
-          });
-        }
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      hasInteractions: interactionWarnings.length > 0,
-      warnings: interactionWarnings
-    });
-  } catch (error) {
+    console.error('Upload Error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -435,9 +258,6 @@ const checkInteractions = async (req, res) => {
 module.exports = {
   getMedicines,
   searchMedicine,
-  uploadMedicinesCsv,
-  updateMedicine,
-  deleteMedicine,
-  checkInteractions,
-  getFDAData
+  getFDAData,
+  uploadMedicinesCsv
 };
