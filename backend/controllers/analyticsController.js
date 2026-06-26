@@ -10,13 +10,20 @@ const getDashboardStats = async (req, res) => {
     let totalSearches = 0;
     let totalMedicines = 0;
     let outOfStockCount = 0;
+    let totalTodayVisits = 0;
     let categoriesCount = {};
+
+    const yesterday = new Date();
+    yesterday.setHours(yesterday.getHours() - 24);
 
     if (process.env.DB_CONNECTED === 'true') {
       totalUsers = await prisma.user.count();
       totalSearches = await prisma.searchLog.count();
       totalMedicines = await prisma.medicine.count();
       outOfStockCount = await prisma.medicine.count({ where: { Stock: 0 } });
+      totalTodayVisits = await prisma.user.count({ 
+        where: { lastLogin: { gte: yesterday } } 
+      });
 
       const categoriesData = await prisma.medicine.groupBy({
         by: ['Category'],
@@ -30,6 +37,7 @@ const getDashboardStats = async (req, res) => {
       totalSearches = mockDb.searchLogs.length + 15;
       totalMedicines = mockDb.medicines.length;
       outOfStockCount = mockDb.medicines.filter(m => m.Stock === 0).length;
+      totalTodayVisits = mockDb.users.filter(u => new Date(u.lastLogin) >= yesterday).length;
 
       mockDb.medicines.forEach(m => {
         if (m.Category) {
@@ -42,6 +50,7 @@ const getDashboardStats = async (req, res) => {
       success: true,
       stats: {
         totalUsers,
+        totalTodayVisits,
         totalSearches,
         totalMedicines,
         outOfStockCount,

@@ -424,12 +424,62 @@ const checkInteractions = async (req, res) => {
   }
 };
 
+// @desc    Add a single new medicine
+// @route   POST /api/medicine/add
+// @access  Private (Pharmacist / Admin)
+const addMedicine = async (req, res) => {
+  try {
+    const { 
+      Medicine_Name, 
+      Brand, 
+      Generic_Name, 
+      Strength, 
+      Use_Case, 
+      Alternative, 
+      Stock, 
+      Price, 
+      Manufacturer, 
+      Category 
+    } = req.body;
+
+    if (!Medicine_Name) {
+      return res.status(400).json({ success: false, error: 'Medicine name is required.' });
+    }
+
+    const medData = {
+      Medicine_ID: `MED${Date.now()}`,
+      Medicine_Name,
+      Brand: Brand || '',
+      Generic_Name: Generic_Name || '',
+      Strength: Strength || '',
+      Use_Case: Use_Case || '',
+      Alternative: Alternative || '',
+      Stock: parseInt(Stock) || 0,
+      Price: parseFloat(Price) || 0.0,
+      Manufacturer: Manufacturer || '',
+      Category: Category || 'General'
+    };
+
+    if (process.env.DB_CONNECTED === 'true') {
+      const newMed = await prisma.medicine.create({ data: medData });
+      return res.status(201).json({ success: true, message: 'Medicine added successfully.', data: newMed });
+    } else {
+      const newMed = mockDb.saveMockMedicine(medData);
+      return res.status(201).json({ success: true, message: 'Medicine added successfully.', data: newMed });
+    }
+  } catch (error) {
+    console.error('Add Medicine Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getMedicines,
   searchMedicine,
-  getFDAData,
   uploadMedicinesCsv,
   updateMedicine,
   deleteMedicine,
-  checkInteractions
+  checkInteractions,
+  getFDAData,
+  addMedicine
 };

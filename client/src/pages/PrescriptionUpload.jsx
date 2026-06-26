@@ -7,8 +7,10 @@ import {
   FiAlertCircle, 
   FiClock, 
   FiDownloadCloud, 
-  FiCheckCircle 
+  FiCheckCircle,
+  FiCalendar
 } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader } from '../components/Loader';
 
 
@@ -69,6 +71,7 @@ export const PrescriptionUpload = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [syncStatus, setSyncStatus] = useState(null);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -188,6 +191,70 @@ export const PrescriptionUpload = () => {
     }
   };
 
+  // Sync AI-parsed medications directly to Pill Calendar
+  const handleSyncToCalendar = async () => {
+    if (!result?.analysis) return;
+    setSyncStatus('syncing');
+
+    // Parse medication names from the AI analysis text using simple regex heuristics
+    // Look for patterns like "Medicine: X", "Drug: X", lines with mg/mcg/ml, or listed items
+    const analysisText = result.analysis;
+    const medLines = analysisText.split('\n').filter(line => {
+      const lower = line.toLowerCase();
+      return (
+        lower.includes('mg') || lower.includes('mcg') || lower.includes('ml') ||
+        lower.includes('tablet') || lower.includes('capsule') || lower.includes('syrup') ||
+        lower.includes('dose') || lower.includes('medicine') || lower.includes('drug')
+      ) && line.length > 5 && line.length < 120;
+    });
+
+    // Extract a clean medicine name from each matched line
+    const medsToSync = [];
+    medLines.forEach(line => {
+      // Strip bullet points, numbers, colons, markdown formatting
+      const cleaned = line.replace(/^[\s\-\*\d\.]+/, '').replace(/\*\*/g, '').trim();
+      if (cleaned.length > 3 && cleaned.length < 80) {
+        // Extract just the drug name (first part before " - " or ":" or parenthesis)
+        const name = cleaned.split(/[-:(]/)[0].trim();
+        if (name.length > 2) medsToSync.push(name);
+      }
+    });
+
+    // De-duplicate
+    const uniqueMeds = [...new Set(medsToSync)].slice(0, 10); // cap at 10
+
+    if (uniqueMeds.length === 0) {
+      setSyncStatus('error');
+      setTimeout(() => setSyncStatus(null), 3000);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      // Create a schedule entry for each extracted medication
+      const promises = uniqueMeds.map(medName =>
+        axios.post(`${API_URL}/schedules/create`, {
+          medicineName: medName,
+          strength: '',
+          frequency: { morning: true, afternoon: false, night: true },
+          foodRelation: 'After Food',
+          durationDays: 7,
+          startDate: new Date().toISOString()
+        }, config).catch(() => null) // don't fail the whole batch on one error
+      );
+
+      await Promise.all(promises);
+      setSyncStatus('done');
+      setTimeout(() => setSyncStatus(null), 4000);
+    } catch (err) {
+      console.error('Calendar sync failed:', err);
+      setSyncStatus('error');
+      setTimeout(() => setSyncStatus(null), 3000);
+    }
+  };
+
   return (
     <div className="grid lg:grid-cols-5 gap-6">
       {/* File Uploader box */}
@@ -261,19 +328,56 @@ export const PrescriptionUpload = () => {
         ) : result ? (
           <div className="flex-1 flex flex-col justify-between h-full space-y-6">
             <div>
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center space-x-2">
                   <FiCheckCircle className="text-teal-500" size={18} />
                   <h4 className="font-extrabold text-slate-850 dark:text-slate-150">Dosage Schedule Extracted</h4>
                 </div>
                 
-                <button
-                  onClick={handleDownloadPDF}
-                  className="px-3 py-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 dark:bg-teal-950/20 dark:text-teal-400 text-xs font-bold transition-all flex items-center space-x-1"
-                >
-                  <FiDownloadCloud size={14} />
-                  <span>Download Summary PDF</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Sync to Calendar Button */}
+                  <AnimatePresence mode="wait">
+                    {syncStatus === 'done' ? (
+                      <motion.div
+                        key="done"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 text-xs font-bold flex items-center space-x-1"
+                      >
+                        <FiCheckCircle size={14} />
+                        <span>Synced to Calendar!</span>
+                      </motion.div>
+                    ) : syncStatus === 'error' ? (
+                      <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                        className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 text-xs font-bold"
+                      >
+                        Could not parse meds
+                      </motion.div>
+                    ) : (
+                      <motion.button
+                        key="btn"
+                        onClick={handleSyncToCalendar}
+                        disabled={syncStatus === 'syncing'}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-400 text-xs font-bold transition-all flex items-center space-x-1 disabled:opacity-50"
+                      >
+                        {syncStatus === 'syncing' ? (
+                          <><div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-1" /><span>Syncing...</span></>
+                        ) : (
+                          <><FiCalendar size={14} /><span>Sync to Calendar</span></>
+                        )}
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="px-3 py-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 dark:bg-teal-950/20 dark:text-teal-400 text-xs font-bold transition-all flex items-center space-x-1"
+                  >
+                    <FiDownloadCloud size={14} />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
               </div>
 
               {/* Analysis Text rendering */}

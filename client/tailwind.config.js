@@ -11,6 +11,13 @@ export default {
         sans:    ['"Plus Jakarta Sans"', 'sans-serif'],
         display: ['Outfit', 'sans-serif'],
       },
+      fontSize: {
+        'xs': ['0.825rem', { lineHeight: '1.25rem' }],
+        'sm': ['0.95rem', { lineHeight: '1.4rem' }],
+        'base': ['1.05rem', { lineHeight: '1.6rem' }],
+        'lg': ['1.15rem', { lineHeight: '1.75rem' }],
+        'xl': ['1.3rem', { lineHeight: '1.85rem' }],
+      },
       colors: {
         primary: {
           50:  '#eff6ff',

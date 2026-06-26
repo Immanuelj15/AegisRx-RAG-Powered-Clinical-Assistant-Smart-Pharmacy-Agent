@@ -47,29 +47,28 @@ export const AdminDashboard = () => {
     let popularData = null;
     let healthData = null;
 
-    // Skip API calls if this is the mock Super Admin session to prevent 401 Unauthorized console errors
-    const isMockAdmin = sessionStorage.getItem('admin_unlocked') === 'true' && !localStorage.getItem('token');
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-    if (!isMockAdmin) {
-      try {
-        // Fetch stats
-        const statsRes = await axios.get(`${API_URL}/dashboard/stats`);
-        if (statsRes.data && statsRes.data.success) {
-          statsData = statsRes.data.stats;
-        }
-      } catch (err) {
-        console.warn('Could not fetch stats, using realistic mock data.');
+    try {
+      // Fetch stats
+      const statsRes = await axios.get(`${API_URL}/dashboard/stats`, config);
+      if (statsRes.data && statsRes.data.success) {
+        statsData = statsRes.data.stats;
       }
+    } catch (err) {
+      console.warn('Could not fetch stats, using realistic mock data.', err.response?.data);
+    }
 
-      try {
-        // Fetch popular medicines search counts
-        const popularRes = await axios.get(`${API_URL}/dashboard/popular`);
-        if (popularRes.data && popularRes.data.success) {
-          popularData = popularRes.data.popularMedicines;
-        }
-      } catch (err) {
-        console.warn('Could not fetch popular medicines, using realistic mock data.');
+    try {
+      // Fetch popular medicines search counts
+      const popularRes = await axios.get(`${API_URL}/dashboard/popular`, config);
+      if (popularRes.data && popularRes.data.success) {
+        popularData = popularRes.data.popularMedicines;
       }
+    } catch (err) {
+      console.warn('Could not fetch popular medicines, using realistic mock data.', err.response?.data);
     }
 
     try {
@@ -83,6 +82,7 @@ export const AdminDashboard = () => {
     // Apply data or fallbacks
     setStats(statsData || {
       totalUsers: 2841,
+      totalTodayVisits: 142,
       totalSearches: 19450,
       totalMedicines: 8540,
       inStockCount: 7120,
@@ -102,17 +102,14 @@ export const AdminDashboard = () => {
 
     setServerHealth(healthData);
 
-    // Simulate a comprehensive list of users for testing admin controls
-    // Make sure these match the quick-fill Demo Accounts on the Login Page!
-    setUsersList([
-      { id: '3', name: 'Alex Admin', email: 'admin@medassist.com', role: 'Admin' },
-      { id: '2', name: 'Sarah Pharmacist', email: 'pharmacist@medassist.com', role: 'Pharmacist' },
-      { id: '1', name: 'John Patient', email: 'patient@medassist.com', role: 'Patient' },
-      { id: '4', name: 'Jane Smith', email: 'jane.smith@demo.com', role: 'Patient' },
-      { id: '5', name: 'Michael Chen', email: 'm.chen@demo.com', role: 'Patient' },
-      { id: '6', name: 'Dr. Emily Carter', email: 'ecarter@aegisrx.local', role: 'Pharmacist' },
-      { id: '7', name: 'Robert Wilson', email: 'r.wilson99@demo.com', role: 'Patient' }
-    ]);
+    try {
+      const usersRes = await axios.get(`${API_URL}/auth/users`, config);
+      if (usersRes.data && usersRes.data.success) {
+        setUsersList(usersRes.data.users);
+      }
+    } catch (err) {
+      console.warn('Could not fetch user list.', err.response?.data);
+    }
 
     setLoading(false);
   };
@@ -158,45 +155,45 @@ export const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="glass-card p-5 flex items-center space-x-4">
-          <div className="p-3 bg-blue-100 dark:bg-blue-950/30 text-primary-500 rounded-2xl">
-            <FiUsers size={20} />
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="glass-card p-6 flex items-center space-x-4 border-l-4 border-blue-500">
+          <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl">
+            <FiUsers size={24} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400">Total Accounts</p>
-            <p className="text-xl font-black text-slate-800 dark:text-slate-100">{stats?.totalUsers}</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Total Users</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats?.totalUsers || 0}</h3>
           </div>
         </div>
 
-        <div className="glass-card p-5 flex items-center space-x-4">
-          <div className="p-3 bg-teal-100 dark:bg-teal-950/30 text-teal-600 rounded-2xl">
-            <FiActivity size={20} />
+        <div className="glass-card p-6 flex items-center space-x-4 border-l-4 border-emerald-500">
+          <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+            <FiActivity size={24} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400">RAG Searches</p>
-            <p className="text-xl font-black text-slate-800 dark:text-slate-100">{stats?.totalSearches}</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Today's Visits</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats?.totalTodayVisits || 0}</h3>
           </div>
         </div>
 
-        <div className="glass-card p-5 flex items-center space-x-4">
-          <div className="p-3 bg-purple-100 dark:bg-purple-950/30 text-purple-500 rounded-2xl">
-            <FiDatabase size={20} />
+        <div className="glass-card p-6 flex items-center space-x-4 border-l-4 border-purple-500">
+          <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl">
+            <FiDatabase size={24} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400">Medicines Catalog</p>
-            <p className="text-xl font-black text-slate-800 dark:text-slate-100">{stats?.totalMedicines}</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Total Searches</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats?.totalSearches || 0}</h3>
           </div>
         </div>
 
-        <div className="glass-card p-5 flex items-center space-x-4">
-          <div className="p-3 bg-yellow-100 dark:bg-yellow-950/30 text-yellow-600 rounded-2xl">
-            <FiCpu size={20} />
+        <div className="glass-card p-6 flex items-center space-x-4 border-l-4 border-teal-500">
+          <div className="p-3 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-xl">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-400">LLM Mode</p>
-            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">Llama 3.3 70B</p>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Medicines Catalog</p>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{stats?.totalMedicines || 0}</h3>
           </div>
         </div>
       </div>
@@ -236,7 +233,15 @@ export const AdminDashboard = () => {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* User Account Registry */}
         <div className="glass-card p-6 flex flex-col h-[280px]">
-          <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100 mb-3">User Registry Directory</h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-extrabold text-base text-slate-800 dark:text-slate-100">User Registry Directory</h3>
+            <button 
+              onClick={() => navigate('/admin-panel')} 
+              className="text-xs font-bold text-primary-500 hover:text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-3 py-1 rounded-lg"
+            >
+              Manage / Add Users &rarr;
+            </button>
+          </div>
           <div className="overflow-y-auto flex-1 border border-slate-100 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
             {usersList.map((usr) => (
               <div key={usr.id} className="flex justify-between items-center p-3 text-xs bg-slate-50/10 dark:bg-slate-900/10">

@@ -6,9 +6,11 @@ const {
   getUserProfile, 
   updateUserProfile,
   forgotPassword,
-  googleLogin
+  googleLogin,
+  adminLogin,
+  getAllUsers
 } = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);
@@ -16,5 +18,7 @@ router.post('/google', googleLogin);
 router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateUserProfile);
 router.post('/forgot-password', forgotPassword);
+router.post('/admin-login', adminLogin);
+router.get('/users', protect, authorize('Admin'), getAllUsers);
 
 module.exports = router;

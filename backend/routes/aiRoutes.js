@@ -19,7 +19,8 @@ const {
   dosageCalculator,
   checkInteractions,
   generateDietPlan,
-  analyzeGenomics
+  analyzeGenomics,
+  deleteChatSession
 } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -58,7 +59,7 @@ router.post('/alternative', protect, suggestAlternative);
 router.get('/sessions', protect, getChatSessions);
 
 // PDF Export Routes
-const { generateChatPDF, generatePrescriptionPDF } = require('../utils/pdfGenerator');
+const { generateChatPDF, generatePrescriptionPDF, generateDietPlanPDF } = require('../utils/pdfGenerator');
 
 router.post('/export-pdf', protect, (req, res) => {
   const { title, messages } = req.body;
@@ -68,6 +69,11 @@ router.post('/export-pdf', protect, (req, res) => {
 router.post('/export-prescription-pdf', protect, (req, res) => {
   const { analysis } = req.body;
   generatePrescriptionPDF(res, analysis);
+});
+
+router.post('/export-diet-plan-pdf', protect, (req, res) => {
+  const { conditions, medications, dietPlan } = req.body;
+  generateDietPlanPDF(res, conditions, medications, dietPlan);
 });
 
 router.post('/export-signed-prescription-pdf', protect, exportSignedPrescription);
@@ -91,5 +97,7 @@ router.post('/check-interactions', protect, checkInteractions);
 
 // @route   POST /api/ai/genomic-analysis
 router.post('/genomic-analysis', protect, analyzeGenomics);
+
+router.delete('/sessions/:id', protect, deleteChatSession);
 
 module.exports = router;

@@ -512,7 +512,8 @@ module.exports = {
   dosageCalculator,
   checkInteractions,
   generateDietPlan,
-  analyzeGenomics
+  analyzeGenomics,
+  deleteChatSession
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -823,3 +824,255 @@ Schema:
     res.status(500).json({ success: false, error: error.message });
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Symptom Checker Triage
+// @route   POST /api/ai/symptom-check
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function symptomCheck(req, res) {
+  try {
+    const { symptoms, age, gender } = req.body;
+    if (!symptoms || symptoms.length === 0) {
+      return res.status(400).json({ success: false, error: 'Symptoms are required' });
+    }
+
+    const systemPrompt = `You are an expert AI clinical triage assistant.
+Provide a JSON response with triage recommendations based on symptoms.
+Fields required:
+- urgencyLevel: "ER", "GP", or "Self-Care"
+- possibleConditions: Array of 3 possible strings
+- recommendedAction: String explaining what to do next
+Do NOT return markdown blocks, just raw JSON.`;
+
+    const userPrompt = `Patient Details: Age ${age || 'Unknown'}, Gender ${gender || 'Unknown'}.
+Symptoms reported: ${symptoms.join(', ')}
+Analyze and triage.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.2);
+    let triage = {};
+    try {
+      triage = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+    } catch (e) {
+      triage = { urgencyLevel: "GP", possibleConditions: ["Unknown"], recommendedAction: "Consult a doctor." };
+    }
+
+    res.status(200).json({ success: true, triage });
+  } catch (error) {
+    console.error('Symptom Check Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to perform symptom check.' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Generate Health Report
+// @route   POST /api/ai/health-report
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function generateHealthReport(req, res) {
+  try {
+    const { age, gender, weight, height, existingConditions, primaryGoals } = req.body;
+    
+    const systemPrompt = `You are AegisRx AI, generating a comprehensive, personalized health report.
+Provide a JSON response with the following keys:
+- healthScore: number (0-100)
+- summary: brief paragraph
+- riskFactors: array of strings
+- recommendations: array of actionable health steps
+Do NOT return markdown blocks, just raw JSON.`;
+
+    const userPrompt = `Age: ${age}, Gender: ${gender}, Weight: ${weight}kg, Height: ${height}cm.
+Conditions: ${existingConditions || 'None'}.
+Goals: ${primaryGoals || 'General Health'}.
+Generate the report.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.3);
+    let report = {};
+    try {
+      report = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+    } catch (e) {
+      report = { healthScore: 70, summary: "Could not generate full report.", riskFactors: [], recommendations: ["Consult a doctor"] };
+    }
+
+    res.status(200).json({ success: true, report });
+  } catch (error) {
+    console.error('Health Report Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate health report.' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Calculate Dosage
+// @route   POST /api/ai/dosage-calc
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function dosageCalculator(req, res) {
+  try {
+    const { medicine, patientWeight, age, condition } = req.body;
+    if (!medicine || !patientWeight) {
+      return res.status(400).json({ success: false, error: 'Medicine and weight are required.' });
+    }
+
+    const systemPrompt = `You are a clinical pharmacist AI. Calculate medication dosage based on weight and age.
+Provide a JSON response:
+- recommendedDose: String (e.g. "500 mg")
+- frequency: String (e.g. "Every 8 hours")
+- maxDailyDose: String
+- warnings: Array of strings
+Do NOT return markdown blocks, just raw JSON.`;
+
+    const userPrompt = `Medicine: ${medicine}
+Patient Weight: ${patientWeight} kg
+Age: ${age}
+Condition: ${condition || 'General'}
+Calculate safe dosage.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.1);
+    let calculation = {};
+    try {
+      calculation = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+    } catch (e) {
+      calculation = { recommendedDose: "Consult Prescriber", frequency: "N/A", maxDailyDose: "N/A", warnings: ["Calculation failed"] };
+    }
+
+    res.status(200).json({ success: true, calculation });
+  } catch (error) {
+    console.error('Dosage Calc Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to calculate dosage.' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Check Drug Interactions
+// @route   POST /api/ai/check-interactions
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function checkInteractions(req, res) {
+  try {
+    const { drugs } = req.body;
+    if (!drugs || !Array.isArray(drugs) || drugs.length < 2) {
+      return res.status(400).json({ success: false, error: 'Provide at least two drugs to check.' });
+    }
+
+    const systemPrompt = `You are a pharmacological AI. Analyze drug-drug interactions.
+Provide a JSON response containing an array called "interactions".
+Each interaction object should have:
+- pair: "Drug A + Drug B"
+- severity: "Safe", "Moderate", or "Severe"
+- description: "Why and what happens"
+- recommendation: "Clinical advice"
+Do NOT return markdown blocks, just raw JSON.`;
+
+    const userPrompt = `Analyze interactions between these drugs: ${drugs.join(', ')}`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.2);
+    let interactions = [];
+    try {
+      const parsed = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+      interactions = parsed.interactions || [];
+    } catch (e) {
+      interactions = [];
+    }
+
+    res.status(200).json({ success: true, interactions });
+  } catch (error) {
+    console.error('Interaction Check Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to check interactions.' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Generate Diet Plan
+// @route   POST /api/ai/diet-plan
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function generateDietPlan(req, res) {
+  try {
+    const { profile, restrictions, goal } = req.body;
+    
+    const systemPrompt = `You are a clinical nutritionist AI. Create a detailed daily diet plan.
+Provide a JSON response with keys:
+- breakfast: String describing the meal
+- lunch: String describing the meal
+- dinner: String describing the meal
+- snacks: Array of strings
+- hydration: String recommendation
+- warnings: Array of strings related to their conditions/medications
+Do NOT return markdown blocks, just raw JSON.`;
+
+    const userPrompt = `Patient Profile: ${JSON.stringify(profile)}
+Dietary Restrictions: ${restrictions.join(', ') || 'None'}
+Goal: ${goal}
+Generate diet plan.`;
+
+    const raw = await groqService.getCompletion(systemPrompt, userPrompt, 0.3);
+    let plan = {};
+    try {
+      plan = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+    } catch (e) {
+      plan = { breakfast: "Oatmeal", lunch: "Salad", dinner: "Chicken", snacks: ["Fruit"], hydration: "2L water", warnings: [] };
+    }
+
+    res.status(200).json({ success: true, plan });
+  } catch (error) {
+    console.error('Diet Plan Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate diet plan.' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Delete a Chat Session
+// @route   DELETE /api/ai/sessions/:id
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+async function deleteChatSession(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id || req.user.id;
+    
+    if (process.env.MONGO_CONNECTED === 'true') {
+      const session = await ChatSession.findById(id);
+      if (!session) {
+        return res.status(404).json({ success: false, error: 'Chat session not found' });
+      }
+      if (session.userId.toString() !== userId.toString()) {
+        return res.status(403).json({ success: false, error: 'Not authorized to delete this session' });
+      }
+      await ChatSession.findByIdAndDelete(id);
+    } else {
+      const session = mockDb.getMockChatSessionById(id);
+      if (!session) {
+        return res.status(404).json({ success: false, error: 'Chat session not found' });
+      }
+      if (session.userId.toString() !== userId.toString()) {
+        return res.status(403).json({ success: false, error: 'Not authorized to delete this session' });
+      }
+      mockDb.deleteMockChatSession(id);
+    }
+
+    res.status(200).json({ success: true, message: 'Chat session deleted successfully' });
+  } catch (error) {
+    console.error('Delete Chat Session Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+module.exports = {
+  chatAgent,
+  understandPrescription,
+  answerFaq,
+  suggestAlternative,
+  getChatSessions,
+  exportSignedPrescription,
+  exportProcurementPO,
+  matchClinicalTrials,
+  auditFdaRecall,
+  researchMedicine,
+  symptomCheck,
+  generateHealthReport,
+  dosageCalculator,
+  checkInteractions,
+  generateDietPlan,
+  analyzeGenomics,
+  deleteChatSession
+};

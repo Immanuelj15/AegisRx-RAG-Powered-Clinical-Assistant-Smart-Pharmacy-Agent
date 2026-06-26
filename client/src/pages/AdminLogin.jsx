@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiLock, FiAlertCircle, FiArrowRight, FiShield } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+import { useAuth, API_URL } from '../context/AuthContext';
 
 export const AdminLogin = () => {
   const { setUser } = useAuth();
@@ -10,22 +11,22 @@ export const AdminLogin = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Hardcoded secure admin password
-    if (password === 'aegis-admin-2026') {
-      sessionStorage.setItem('admin_unlocked', 'true');
-      setUser({
-        id: 'admin_root',
-        name: 'Super Admin',
-        email: 'root@aegisrx.local',
-        role: 'Admin'
-      });
-      navigate('/dashboard/admin');
-    } else {
-      setError('Invalid admin credentials. Access denied.');
+    try {
+      const res = await axios.post(`${API_URL}/auth/admin-login`, { password });
+      
+      if (res.data && res.data.success) {
+        // Securely store the real token
+        localStorage.setItem('token', res.data.token);
+        sessionStorage.setItem('admin_unlocked', 'true'); // Keep this for legacy check if needed
+        setUser(res.data.user);
+        navigate('/dashboard/admin');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid admin credentials. Access denied.');
     }
   };
 

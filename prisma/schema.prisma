@@ -20,6 +20,7 @@ model User {
   gender         String?                @default("")
   medicalHistory String?                @default("")
   createdAt      DateTime               @default(now())
+  lastLogin      DateTime?              @default(now())
   
   searchLogs     SearchLog[]
   prescriptions  PrescriptionSchedule[]

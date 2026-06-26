@@ -45,6 +45,10 @@ const UserSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+  lastLogin: {
+    type: Date,
+    default: Date.now,
   }
 });
 

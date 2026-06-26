@@ -7,7 +7,8 @@ import {
   FiCheckCircle, 
   FiHeart,
   FiCalendar,
-  FiChevronDown
+  FiChevronDown,
+  FiDownload
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,6 +18,7 @@ export const DietPlanner = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [dietPlan, setDietPlan] = useState(null);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   
   const [expandedDay, setExpandedDay] = useState(0);
 
@@ -69,6 +71,29 @@ export const DietPlanner = () => {
     }
   };
 
+  // Download diet plan as formatted PDF
+  const handleDownloadPDF = async () => {
+    if (!dietPlan) return;
+    setIsDownloadingPDF(true);
+    try {
+      const conditionArr = conditions.split(',').map(c => c.trim());
+      const response = await axios.post(
+        `${API_URL}/ai/export-diet-plan-pdf`,
+        { conditions: conditionArr, medications: activeMeds, dietPlan },
+        { ...config, responseType: 'blob' }
+      );
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `AegisRx-Diet-Plan-${Date.now()}.pdf`;
+      link.click();
+    } catch (err) {
+      console.error('Diet plan PDF download failed:', err);
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
@@ -84,6 +109,21 @@ export const DietPlanner = () => {
             </p>
           </div>
         </div>
+        {/* Download PDF button shown after plan is generated */}
+        {dietPlan && (
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isDownloadingPDF}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+          >
+            {isDownloadingPDF ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <FiDownload size={16} />
+            )}
+            <span>{isDownloadingPDF ? 'Generating PDF...' : 'Download PDF'}</span>
+          </button>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">

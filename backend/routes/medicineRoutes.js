@@ -10,7 +10,8 @@ const {
   updateMedicine, 
   deleteMedicine,
   checkInteractions,
-  getFDAData 
+  getFDAData,
+  addMedicine
 } = require('../controllers/medicineController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -45,6 +46,7 @@ router.get('/search', protect, searchMedicine);
 router.get('/fda/:drugName', protect, getFDAData);
 router.post('/interaction-check', protect, checkInteractions);
 router.post('/upload', protect, authorize('Pharmacist', 'Admin'), upload.single('file'), uploadMedicinesCsv);
+router.post('/add', protect, authorize('Pharmacist', 'Admin'), addMedicine);
 router.put('/update', protect, authorize('Pharmacist', 'Admin'), updateMedicine);
 router.delete('/delete', protect, authorize('Admin'), deleteMedicine);
 

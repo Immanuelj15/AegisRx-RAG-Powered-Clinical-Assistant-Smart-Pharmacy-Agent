@@ -202,7 +202,8 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   await connectDB();
   
-  const PORT = process.env.PORT || 5000;
+  // Trigger restart again
+const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`Express Server running on http://127.0.0.1:${PORT}`);
     autoSeedOnStartup();

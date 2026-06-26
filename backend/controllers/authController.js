@@ -120,45 +120,112 @@ const loginUser = async (req, res) => {
         return res.status(401).json({ success: false, error: 'Invalid credentials' });
       }
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ success: false, error: 'Invalid credentials' });
-      }
+      if (user && (await bcrypt.compare(password, user.password))) {
+        // Update last login
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() }
+        });
 
-      return res.status(200).json({
-        success: true,
-        token: generateToken(user),
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        }
-      });
+        return res.status(200).json({
+          success: true,
+          token: generateToken(user),
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          }
+        });
+      }
+      
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
     } else {
       const user = mockDb.getMockUserByEmail(emailLower);
       if (!user) {
         return res.status(401).json({ success: false, error: 'Invalid credentials' });
       }
 
-      const isMatch = bcrypt.compareSync(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      if (user && bcrypt.compareSync(password, user.password)) {
+        // Update last login
+        user.lastLogin = new Date();
+        mockDb.saveMockUser(user);
+
+        return res.status(200).json({
+          success: true,
+          token: generateToken(user),
+          user: {
+            id: user.id || user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          }
+        });
       }
 
-      return res.status(200).json({
-        success: true,
-        token: generateToken(user),
-        user: {
-          id: user.id || user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        }
-      });
+      return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
   } catch (error) {
     console.error('Login Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Admin Root Login Bypass
+// @route   POST /api/auth/admin-login
+// @access  Public
+const adminLogin = async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    // Hardcoded master admin password
+    if (password === 'aegis-admin-2026') {
+      const adminPayload = {
+        id: 'admin_root_master',
+        name: 'Aegis System Admin',
+        email: 'root@aegisrx.local',
+        role: 'Admin'
+      };
+      
+      return res.status(200).json({
+        success: true,
+        token: generateToken(adminPayload),
+        user: adminPayload
+      });
+    }
+    
+    return res.status(401).json({ success: false, error: 'Invalid admin credentials. Access denied.' });
+  } catch (error) {
+    console.error('Admin Login Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Get all registered users
+// @route   GET /api/auth/users
+// @access  Private/Admin
+const getAllUsers = async (req, res) => {
+  try {
+    if (process.env.DB_CONNECTED === 'true') {
+      const users = await prisma.user.findMany({
+        select: { id: true, name: true, email: true, role: true, phone: true, lastLogin: true, createdAt: true },
+        orderBy: { lastLogin: 'desc' }
+      });
+      return res.status(200).json({ success: true, users });
+    } else {
+      const users = mockDb.users.map(u => ({ 
+        id: u.id || u._id, 
+        name: u.name, 
+        email: u.email, 
+        role: u.role, 
+        phone: u.phone, 
+        lastLogin: u.lastLogin,
+        createdAt: u.createdAt
+      })).sort((a, b) => new Date(b.lastLogin || 0) - new Date(a.lastLogin || 0));
+      return res.status(200).json({ success: true, users });
+    }
+  } catch (error) {
+    console.error('Get All Users Error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -331,8 +398,10 @@ const googleLogin = async (req, res) => {
 module.exports = {
   registerUser,
   loginUser,
+  googleLogin,
   getUserProfile,
   updateUserProfile,
   forgotPassword,
-  googleLogin
+  adminLogin,
+  getAllUsers
 };

@@ -24,7 +24,8 @@ const seedMockUsers = () => {
       age: 32,
       gender: 'Male',
       medicalHistory: 'None',
-      createdAt: new Date()
+      createdAt: new Date(),
+      lastLogin: new Date()
     });
     users.push({
       _id: 'mock_pharmacist_id',
@@ -36,7 +37,8 @@ const seedMockUsers = () => {
       age: 28,
       gender: 'Female',
       medicalHistory: '',
-      createdAt: new Date()
+      createdAt: new Date(),
+      lastLogin: new Date()
     });
     users.push({
       _id: 'mock_admin_id',
@@ -48,7 +50,8 @@ const seedMockUsers = () => {
       age: 40,
       gender: 'Male',
       medicalHistory: '',
-      createdAt: new Date()
+      createdAt: new Date(),
+      lastLogin: new Date()
     });
   }
 };
@@ -162,6 +165,14 @@ module.exports = {
       chatSessions.push(newSession);
       return newSession;
     }
+  },
+  deleteMockChatSession: (id) => {
+    const existingIdx = chatSessions.findIndex(c => c._id === id.toString() || c.id === id.toString());
+    if (existingIdx !== -1) {
+      chatSessions.splice(existingIdx, 1);
+      return true;
+    }
+    return false;
   },
 
   // Log methods

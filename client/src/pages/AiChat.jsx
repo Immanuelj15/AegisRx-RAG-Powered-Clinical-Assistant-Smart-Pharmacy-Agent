@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { API_URL } from '../context/AuthContext';
 import { useVoice } from '../hooks/useVoice';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiSend, 
   FiMic, 
@@ -12,7 +13,9 @@ import {
   FiDownload, 
   FiFolder,
   FiPlusCircle,
-  FiMessageSquare
+  FiMessageSquare,
+  FiTrash2,
+  FiRadio
 } from 'react-icons/fi';
 import { Loader, TypingLoader } from '../components/Loader';
 
@@ -67,6 +70,22 @@ export const AiChat = () => {
     setCurrentSessionId('');
     setMessages([]);
     stopSpeaking();
+  };
+
+  const handleDeleteSession = async (e, sessionId) => {
+    e.stopPropagation(); // prevent selecting the session when clicking delete
+    try {
+      const res = await axios.delete(`${API_URL}/ai/sessions/${sessionId}`);
+      if (res.data && res.data.success) {
+        setSessions(prev => prev.filter(s => (s._id || s.id) !== sessionId));
+        // If we deleted the currently active session, clear the screen
+        if (currentSessionId === sessionId) {
+          handleCreateNewSession();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete session', err);
+    }
   };
 
   const handleSendMessage = async (textToSend) => {
@@ -142,9 +161,9 @@ export const AiChat = () => {
   };
 
   return (
-    <div className="grid lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
+    <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6 min-h-[calc(100vh-140px)] lg:h-[calc(100vh-140px)]">
       {/* Session lists sidebar */}
-      <div className="glass-card p-4 hidden lg:flex flex-col h-full lg:col-span-1">
+      <div className="glass-card p-4 flex flex-col h-64 lg:h-full lg:col-span-1 order-2 lg:order-1">
         <button
           onClick={handleCreateNewSession}
           className="w-full flex items-center justify-center space-x-2 p-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-bold text-xs shadow-md transition-colors"
@@ -163,24 +182,35 @@ export const AiChat = () => {
             <p className="text-[10px] text-slate-400 p-2 italic">No past sessions found.</p>
           ) : (
             sessions.map((sess) => (
-              <button
+              <div
                 key={sess._id || sess.id}
-                onClick={() => handleSelectSession(sess)}
-                className={`w-full text-left p-2.5 rounded-xl text-xs font-semibold truncate transition-colors ${
+                className={`w-full flex items-center justify-between rounded-xl overflow-hidden transition-colors ${
                   (sess._id === currentSessionId || sess.id === currentSessionId)
                     ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-secondary-400 border border-primary-200/50 dark:border-primary-900/30'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                {sess.title || 'General consultation'}
-              </button>
+                <button
+                  onClick={() => handleSelectSession(sess)}
+                  className="flex-1 text-left p-2.5 text-xs font-semibold truncate"
+                >
+                  {sess.title || 'General consultation'}
+                </button>
+                <button
+                  onClick={(e) => handleDeleteSession(e, sess._id || sess.id)}
+                  className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                  title="Delete Chat"
+                >
+                  <FiTrash2 size={12} />
+                </button>
+              </div>
             ))
           )}
         </div>
       </div>
 
       {/* Main Chat frame */}
-      <div className="glass-card p-5 flex flex-col h-full lg:col-span-3">
+      <div className="glass-card p-4 md:p-5 flex flex-col h-[65vh] lg:h-full lg:col-span-3 order-1 lg:order-2">
         {/* Chat Control toolbar */}
         <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
           <div className="flex items-center space-x-2">
@@ -204,6 +234,14 @@ export const AiChat = () => {
             >
               {readBackEnabled ? <FiVolume2 size={14} /> : <FiVolumeX size={14} />}
               <span className="hidden sm:inline">Voice Response</span>
+              {/* Speaking indicator */}
+              {isSpeaking && (
+                <span className="flex gap-0.5 ml-1">
+                  {[0,0.1,0.2,0.1].map((delay, i) => (
+                    <span key={i} className="w-0.5 bg-teal-500 rounded-full animate-bounce" style={{height: '10px', animationDelay: `${delay}s`}} />
+                  ))}
+                </span>
+              )}
             </button>
 
             {/* PDF Export Button */}
@@ -290,6 +328,28 @@ export const AiChat = () => {
             </div>
           )}
           
+          {/* Listening state bubble */}
+          <AnimatePresence>
+            {isListening && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                className="flex space-x-3 max-w-[85%] ml-auto justify-end"
+              >
+                <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 flex items-center gap-3">
+                  <FiRadio size={14} className="text-red-500 animate-pulse" />
+                  <span className="text-xs font-bold text-red-600 dark:text-red-400">Listening... speak now</span>
+                  <span className="flex gap-0.5">
+                    {[0,0.15,0.3,0.15,0].map((delay, i) => (
+                      <span key={i} className="w-0.5 bg-red-500 rounded-full animate-bounce" style={{height: '12px', animationDelay: `${delay}s`}} />
+                    ))}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div ref={chatBottomRef}></div>
         </div>
 
@@ -297,17 +357,27 @@ export const AiChat = () => {
         <div className="flex items-center space-x-3 pt-3 border-t border-slate-100 dark:border-slate-800">
           {/* Voice Microphone */}
           {speechSupported && (
-            <button
-              onClick={handleToggleVoice}
-              className={`p-3 rounded-2xl transition-all shadow-sm flex items-center justify-center ${
-                isListening 
-                  ? 'bg-red-500 text-white voice-recording-glow' 
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-900 dark:border dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800'
-              }`}
-              title={isListening ? 'Stop Listening' : 'Start Voice Search'}
-            >
-              {isListening ? <FiMicOff size={16} /> : <FiMic size={16} />}
-            </button>
+            <div className="relative">
+              <button
+                onClick={handleToggleVoice}
+                disabled={loading}
+                className={`p-3 rounded-2xl transition-all shadow-sm flex items-center justify-center relative ${
+                  isListening 
+                    ? 'bg-red-500 text-white shadow-red-500/30 shadow-lg scale-110' 
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-900 dark:border dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800'
+                }`}
+                title={isListening ? 'Stop Listening' : 'Start Voice Input'}
+              >
+                {isListening ? <FiMicOff size={16} /> : <FiMic size={16} />}
+                {/* Animated pulse rings when listening */}
+                {isListening && (
+                  <>
+                    <span className="absolute inset-0 rounded-2xl animate-ping bg-red-400 opacity-30" />
+                    <span className="absolute inset-0 rounded-2xl animate-ping bg-red-400 opacity-20" style={{animationDelay: '0.2s'}} />
+                  </>
+                )}
+              </button>
+            </div>
           )}
 
           {/* Text Input */}
